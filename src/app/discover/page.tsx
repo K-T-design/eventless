@@ -1,6 +1,6 @@
 
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { EventCard } from "@/components/event-card";
 import { Input } from "@/components/ui/input";
 import {
@@ -48,17 +48,20 @@ export default function DiscoverPage() {
 
     fetchEvents();
   }, []);
-
-  const filteredEvents = events
-    .filter((event) =>
-      event.title.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .filter((event) =>
-      selectedUniversity ? event.university === selectedUniversity : true
-    );
+  
+  // Memoize the filtering logic to avoid re-computation on every render
+  const filteredEvents = useMemo(() => {
+    return events
+      .filter((event) =>
+        event.title.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      .filter((event) =>
+        selectedUniversity ? event.university === selectedUniversity : true
+      );
+  }, [events, searchTerm, selectedUniversity]);
   
   // Create a unique list of universities from the approved events
-  const universities = [...new Set(events.map(event => event.university))];
+  const universities = useMemo(() => [...new Set(events.map(event => event.university))], [events]);
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
