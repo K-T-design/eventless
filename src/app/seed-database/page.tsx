@@ -1,10 +1,11 @@
+
 "use client";
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { firestore } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDocs, writeBatch, doc } from 'firebase/firestore';
 
 const mockEvents = [
   {
@@ -99,10 +100,10 @@ export default function SeedDatabasePage() {
         setMessage('');
 
         try {
-            const eventsCollection = collection(firestore, 'events');
+            const eventsCollectionRef = collection(firestore, 'events');
             
             // Check if events already exist to prevent duplicates
-            const existingEvents = await getDocs(eventsCollection);
+            const existingEvents = await getDocs(eventsCollectionRef);
             if (!existingEvents.empty) {
                  setStatus('error');
                  setMessage('Database already contains event data. Seeding was skipped to prevent duplicates. To re-seed, please clear the "events" collection in your Firestore console.');
@@ -113,9 +114,8 @@ export default function SeedDatabasePage() {
             // Use a batch write for efficiency
             const batch = writeBatch(firestore);
             mockEvents.forEach(event => {
-                const docRef = collection(firestore, 'events');
-                // Note: Firestore automatically creates a new doc with a unique ID when using addDoc in a batch
-                 batch.set(docRef.doc(), { ...event, organizerId: 'super_admin_seed' }); 
+                const newDocRef = doc(collection(firestore, 'events'));
+                batch.set(newDocRef, { ...event, organizerId: 'super_admin_seed' }); 
             });
             
             await batch.commit();
