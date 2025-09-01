@@ -1,3 +1,6 @@
+
+"use client";
+import { useEffect, useState } from "react";
 import { EventCard } from "@/components/event-card";
 import { Input } from "@/components/ui/input";
 import {
@@ -9,71 +12,46 @@ import {
 } from "@/components/ui/select";
 import type { Event } from "@/types";
 import { Search } from "lucide-react";
-
-const mockEvents: Event[] = [
-  {
-    id: "1",
-    title: "Tech Innovators Conference 2024",
-    university: "University of Lagos",
-    date: "October 26, 2024",
-    location: "Main Auditorium",
-    price: 2500,
-    imageUrl: "https://picsum.photos/600/400?random=1",
-    imageHint: "tech conference",
-  },
-  {
-    id: "2",
-    title: "Art & Culture Festival",
-    university: "University of Ibadan",
-    date: "November 5, 2024",
-    location: "Faculty of Arts",
-    price: 1000,
-    imageUrl: "https://picsum.photos/600/400?random=2",
-    imageHint: "art festival",
-  },
-  {
-    id: "3",
-    title: "Entrepreneurship Summit",
-    university: "Covenant University",
-    date: "November 12, 2024",
-    location: "CUCRID Building",
-    price: 5000,
-    imageUrl: "https://picsum.photos/600/400?random=3",
-    imageHint: "business summit",
-  },
-  {
-    id: "4",
-    title: "Final Year Dinner & Awards",
-    university: "University of Lagos",
-    date: "November 18, 2024",
-    location: "Jelili Omotola Halls",
-    price: 15000,
-    imageUrl: "https://picsum.photos/600/400?random=4",
-    imageHint: "formal dinner",
-  },
-   {
-    id: "5",
-    title: "AI in Healthcare Hackathon",
-    university: "Obafemi Awolowo University",
-    date: "November 20, 2024",
-    location: "ICT Centre",
-    price: 0,
-    imageUrl: "https://picsum.photos/600/400?random=5",
-    imageHint: "students coding",
-  },
-   {
-    id: "6",
-    title: "Indie Music Night",
-    university: "University of Nigeria, Nsukka",
-    date: "December 2, 2024",
-    location: "Student Union Building",
-    price: 1500,
-    imageUrl: "https://picsum.photos/600/400?random=6",
-    imageHint: "live music",
-  },
-];
+import { firestore } from "@/lib/firebase";
+import { collection, getDocs } from "firebase/firestore";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DiscoverPage() {
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedUniversity, setSelectedUniversity] = useState<string>("");
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      setLoading(true);
+      const eventsCollection = collection(firestore, "events");
+      const eventSnapshot = await getDocs(eventsCollection);
+      const eventsList = eventSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          date: data.date.toDate(), // Convert Firestore Timestamp to Date
+        } as Event;
+      });
+      setEvents(eventsList);
+      setLoading(false);
+    };
+
+    fetchEvents();
+  }, []);
+
+  const filteredEvents = events
+    .filter((event) =>
+      event.title.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .filter((event) =>
+      selectedUniversity ? event.university === selectedUniversity : true
+    );
+  
+  const universities = [...new Set(events.map(event => event.university))];
+
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
       <div className="text-center mb-8">
@@ -86,27 +64,45 @@ export default function DiscoverPage() {
       <div className="flex flex-col md:flex-row gap-4 mb-8 p-4 bg-card rounded-lg shadow-sm sticky top-16 z-40">
         <div className="relative flex-grow">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-          <Input placeholder="Search by event title..." className="pl-10" />
+          <Input 
+            placeholder="Search by event title..." 
+            className="pl-10" 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
-        <Select>
+        <Select onValueChange={setSelectedUniversity} value={selectedUniversity}>
           <SelectTrigger className="w-full md:w-[280px]">
             <SelectValue placeholder="Filter by university" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="unilag">University of Lagos</SelectItem>
-            <SelectItem value="ui">University of Ibadan</SelectItem>
-            <SelectItem value="cu">Covenant University</SelectItem>
-            <SelectItem value="oau">Obafemi Awolowo University</SelectItem>
-            <SelectItem value="unn">University of Nigeria, Nsukka</SelectItem>
+            <SelectItem value="">All Universities</SelectItem>
+            {universities.map(uni => (
+              <SelectItem key={uni} value={uni}>{uni}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-        {mockEvents.map((event) => (
-          <EventCard key={event.id} event={event} />
-        ))}
-      </div>
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="flex flex-col space-y-3">
+              <Skeleton className="h-[200px] w-full rounded-xl" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-[250px]" />
+                <Skeleton className="h-4 w-[200px]" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          {filteredEvents.map((event) => (
+            <EventCard key={event.id} event={event} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

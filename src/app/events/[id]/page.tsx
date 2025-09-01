@@ -1,30 +1,73 @@
+
+"use client";
+
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, MapPin, Ticket, University } from "lucide-react";
 import Image from "next/image";
-
-// Mock data - we will replace this with a database call
-const mockEvent = {
-    id: "1",
-    title: "Tech Innovators Conference 2024",
-    university: "University of Lagos",
-    date: "October 26, 2024",
-    time: "9:00 AM - 5:00 PM",
-    location: "Main Auditorium",
-    price: 2500,
-    imageUrl: "https://picsum.photos/1200/600?random=1",
-    imageHint: "tech conference hall",
-    description: "Join us for the most anticipated tech event of the year! The Tech Innovators Conference brings together the brightest minds in technology, from seasoned professionals to aspiring students. This full-day event will feature keynote speeches from industry leaders, hands-on workshops, and networking opportunities. Learn about the latest trends in AI, blockchain, and sustainable tech. Whether you are looking to launch your career, find a co-founder, or simply get inspired, this is the place to be. Your ticket includes access to all sessions, a complimentary lunch, and a digital swag bag."
-};
-
+import { firestore } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import type { Event } from "@/types";
+import { Skeleton } from "@/components/ui/skeleton";
+import { format } from "date-fns";
 
 export default function EventDetailPage({ params }: { params: { id: string } }) {
-  // In the future, we will use params.id to fetch data from Firestore.
-  const event = mockEvent;
+  const [event, setEvent] = useState<Event | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (params.id) {
+      const fetchEvent = async () => {
+        setLoading(true);
+        const docRef = doc(firestore, "events", params.id);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setEvent({
+            id: docSnap.id,
+            ...data,
+            date: data.date.toDate(),
+          } as Event);
+        } else {
+          console.error("No such document!");
+        }
+        setLoading(false);
+      };
+
+      fetchEvent();
+    }
+  }, [params.id]);
+
+  if (loading) {
+    return (
+       <div className="container mx-auto max-w-5xl py-12 px-4">
+          <div className="grid md:grid-cols-2 gap-8 md:gap-12">
+            <Skeleton className="aspect-video rounded-lg" />
+            <div className="flex flex-col justify-center gap-4">
+              <Skeleton className="h-12 w-3/4" />
+              <Skeleton className="h-6 w-1/2" />
+              <Skeleton className="h-6 w-1/2" />
+              <Skeleton className="h-6 w-1/3" />
+              <Skeleton className="h-20 w-full" />
+            </div>
+             <div className="md:col-span-2 space-y-4">
+                <Skeleton className="h-8 w-1/4" />
+                <Skeleton className="h-24 w-full" />
+            </div>
+          </div>
+       </div>
+    )
+  }
+
+  if (!event) {
+    return <div className="text-center py-12">Event not found.</div>;
+  }
 
   return (
     <div className="container mx-auto max-w-5xl py-12 px-4">
       <div className="grid md:grid-cols-2 gap-8 md:gap-12">
-        <div className="relative aspect-video rounded-lg overflow-hidden">
+        <div className="relative aspect-video rounded-lg overflow-hidden shadow-lg">
              <Image
                 src={event.imageUrl}
                 alt={event.title}
@@ -43,7 +86,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
                 </div>
                 <div className="flex items-center gap-3">
                     <Calendar className="h-5 w-5 text-primary" />
-                    <span>{event.date}</span>
+                    <span>{format(event.date, 'PPP')}</span>
                 </div>
                  <div className="flex items-center gap-3">
                     <Clock className="h-5 w-5 text-primary" />
@@ -70,7 +113,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
         
         <div className="md:col-span-2">
             <h2 className="text-3xl font-bold font-headline mb-4 border-b pb-2">About this Event</h2>
-            <p className="text-muted-foreground leading-relaxed">
+            <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
                 {event.description}
             </p>
         </div>

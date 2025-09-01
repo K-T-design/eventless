@@ -9,7 +9,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { Event } from "@/types";
-import { Calendar, MapPin, Ticket } from "lucide-react";
+import { Calendar, MapPin, University } from "lucide-react";
+import { format } from 'date-fns';
 
 type EventCardProps = {
   event: Event;
@@ -33,16 +34,16 @@ export function EventCard({ event }: EventCardProps) {
         </CardHeader>
         <CardContent className="flex-grow space-y-2 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
+            <University className="h-4 w-4" />
+            <span>{event.university}</span>
+          </div>
+          <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
-            <span>{event.date}</span>
+            <span>{format(event.date, 'PPP')}</span>
           </div>
           <div className="flex items-center gap-2">
             <MapPin className="h-4 w-4" />
             <span>{event.location}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Ticket className="h-4 w-4" />
-            <span>{event.university}</span>
           </div>
         </CardContent>
         <CardFooter className="flex justify-between items-center pt-4 mt-auto">
