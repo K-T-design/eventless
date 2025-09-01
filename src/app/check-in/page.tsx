@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -19,10 +20,15 @@ export default function CheckInPage() {
 
   const handleScan = () => {
     setScanned(true);
-    setTicketStatus("valid");
+    // In a real app, you'd get this status from a database lookup
+    // For now, we'll cycle through statuses to test the UI
+    const statuses: TicketStatus[] = ["valid", "used", "invalid"];
+    const randomIndex = Math.floor(Math.random() * statuses.length);
+    setTicketStatus(statuses[randomIndex]);
   };
 
   const handleConfirm = () => {
+    // In a real app, this would update the ticket status in the database
     setTicketStatus("used");
   };
 

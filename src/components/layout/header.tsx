@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ticket, LogOut, LogIn, LayoutDashboard, User } from "lucide-react";
+import { Ticket, LogOut, LogIn, LayoutDashboard, User, QrCode } from "lucide-react";
 import { auth, firestore } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -85,12 +85,15 @@ function AuthButtons() {
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/check-in">
-                    <User className="mr-2 h-4 w-4" />
+                    <QrCode className="mr-2 h-4 w-4" />
                     Event Check-in
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/settings/payouts">Payout Settings</Link>
+                 <Link href="/settings/payouts">
+                    <User className="mr-2 h-4 w-4" />
+                    Account Settings
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => signOut(auth)}>
