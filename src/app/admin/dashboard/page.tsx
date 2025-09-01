@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, updateDoc,getCountFromServer } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
 import type { Event } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -10,17 +10,39 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { Loader2 } from "lucide-react";
+import { Loader2, Users, Calendar as CalendarIcon, AlertTriangle } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function AdminDashboardPage() {
   const [pendingEvents, setPendingEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+      totalUsers: 0,
+      totalEvents: 0,
+      pendingEvents: 0,
+  });
 
-  const fetchPendingEvents = async () => {
+  const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const eventsRef = collection(firestore, "events");
-      const q = query(eventsRef, where("status", "==", "pending"));
+        // Fetch stats
+        const usersCollection = collection(firestore, "users");
+        const eventsCollection = collection(firestore, "events");
+        
+        const usersSnapshot = await getCountFromServer(usersCollection);
+        const eventsSnapshot = await getCountFromServer(eventsCollection);
+        
+        const pendingQuery = query(eventsCollection, where("status", "==", "pending"));
+        const pendingSnapshot = await getCountFromServer(pendingQuery);
+
+        setStats({
+            totalUsers: usersSnapshot.data().count,
+            totalEvents: eventsSnapshot.data().count,
+            pendingEvents: pendingSnapshot.data().count,
+        });
+
+      // Fetch pending events for the queue
+      const q = query(eventsCollection, where("status", "==", "pending"));
       const querySnapshot = await getDocs(q);
       const eventsList = querySnapshot.docs.map(doc => {
           const data = doc.data();
@@ -32,11 +54,11 @@ export default function AdminDashboardPage() {
       });
       setPendingEvents(eventsList);
     } catch (error) {
-      console.error("Error fetching pending events: ", error);
+      console.error("Error fetching dashboard data: ", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Could not fetch pending events.",
+        description: "Could not fetch dashboard data.",
       });
     } finally {
         setLoading(false);
@@ -44,7 +66,7 @@ export default function AdminDashboardPage() {
   };
 
   useEffect(() => {
-    fetchPendingEvents();
+    fetchDashboardData();
   }, []);
 
   const handleEventStatusChange = async (eventId: string, newStatus: 'approved' | 'rejected') => {
@@ -56,7 +78,7 @@ export default function AdminDashboardPage() {
         description: `Event has been ${newStatus}.`,
       });
       // Refresh the list after update
-      fetchPendingEvents();
+      fetchDashboardData();
     } catch (error) {
        console.error(`Error updating event ${eventId}: `, error);
        toast({
@@ -68,12 +90,42 @@ export default function AdminDashboardPage() {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+    return <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
   return (
-    <div>
-        <h1 className="text-3xl font-bold font-headline mb-6">Event Approval Queue</h1>
+    <>
+      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalUsers}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Events</CardTitle>
+            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalEvents}</div>
+          </CardContent>
+        </Card>
+        <Card className={stats.pendingEvents > 0 ? "border-destructive text-destructive" : ""}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Events Pending Approval</CardTitle>
+            <AlertTriangle className={`h-4 w-4 ${stats.pendingEvents > 0 ? "text-destructive" : "text-muted-foreground"}`} />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.pendingEvents}</div>
+          </CardContent>
+        </Card>
+      </div>
+      <div>
+        <h2 className="text-2xl font-bold font-headline my-6">Event Approval Queue</h2>
         {pendingEvents.length > 0 ? (
              <Table>
                 <TableHeader>
@@ -103,10 +155,12 @@ export default function AdminDashboardPage() {
                 </TableBody>
             </Table>
         ) : (
-            <div className="text-center py-12 border-2 border-dashed rounded-lg">
-                <p className="text-muted-foreground">There are no pending events to review.</p>
+            <div className="text-center py-12 border-2 border-dashed rounded-lg bg-card">
+                <p className="text-muted-foreground">There are no pending events to review. Great job!</p>
             </div>
         )}
     </div>
+    </>
   );
 }
+

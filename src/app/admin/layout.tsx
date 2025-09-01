@@ -9,6 +9,7 @@ import { auth, firestore } from '@/lib/firebase';
 import type { UserProfile } from '@/types';
 import { Loader2 } from 'lucide-react';
 import { AdminHeader } from '@/components/layout/admin-header';
+import { AdminSidebar } from '@/components/layout/admin-sidebar';
 
 export default function AdminLayout({
   children,
@@ -72,11 +73,14 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-muted/40">
+    <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
+      <AdminSidebar />
+      <div className="flex flex-col">
         <AdminHeader />
-        <main className="container mx-auto max-w-7xl py-8 px-4 md:px-6">
+        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-muted/40">
             {children}
         </main>
+      </div>
     </div>
   )
 }
