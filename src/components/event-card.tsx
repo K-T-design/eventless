@@ -1,3 +1,6 @@
+
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -11,12 +14,20 @@ import { Button } from "@/components/ui/button";
 import type { Event } from "@/types";
 import { Calendar, MapPin, University } from "lucide-react";
 import { format } from 'date-fns';
+import { useEffect, useState } from "react";
 
 type EventCardProps = {
   event: Event;
 };
 
 export function EventCard({ event }: EventCardProps) {
+  const [formattedDate, setFormattedDate] = useState("");
+
+  useEffect(() => {
+    // Format the date on the client-side to avoid hydration mismatch
+    setFormattedDate(format(event.date, 'PPP'));
+  }, [event.date]);
+
   return (
     <Link href={`/events/${event.id}`} className="flex flex-col h-full group">
       <Card className="overflow-hidden shadow-lg group-hover:shadow-xl transition-shadow duration-300 flex flex-col h-full">
@@ -39,7 +50,7 @@ export function EventCard({ event }: EventCardProps) {
           </div>
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
-            <span>{format(event.date, 'PPP')}</span>
+            <span>{formattedDate || "Loading date..."}</span>
           </div>
           <div className="flex items-center gap-2">
             <MapPin className="h-4 w-4" />
