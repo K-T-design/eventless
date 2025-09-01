@@ -53,8 +53,7 @@ export function AdminSidebarNav({ className }: { className?: string }) {
             {navItems.map(item => (
                 <Link
                     key={item.label}
-                    // For now, all links point to the dashboard until we build the other pages
-                    href={"/admin/dashboard"}
+                    href={item.href}
                     className={cn(
                         "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
                         pathname === item.href && "bg-muted text-primary"
