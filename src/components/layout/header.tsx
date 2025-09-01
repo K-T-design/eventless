@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,108 +12,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Ticket, LogOut, LogIn } from "lucide-react";
 import { auth } from "@/lib/firebase";
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-} from "firebase/auth";
+import { signOut } from "firebase/auth";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toast } from "@/hooks/use-toast";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-
-function AuthForm() {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-
-    const handleSignUp = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            await createUserWithEmailAndPassword(auth, email, password);
-            toast({ title: "Account Created", description: "You have been successfully signed up." });
-        } catch (error: any) {
-            toast({ variant: "destructive", title: "Sign Up Failed", description: error.message });
-        }
-    };
-
-    const handleSignIn = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            await signInWithEmailAndPassword(auth, email, password);
-            toast({ title: "Signed In", description: "You have been successfully signed in." });
-        } catch (error: any) {
-            toast({ variant: "destructive", title: "Sign In Failed", description: error.message });
-        }
-    };
-
-    return (
-        <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
-            </TabsList>
-            <TabsContent value="signin">
-                <form onSubmit={handleSignIn}>
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl text-center font-headline">Welcome Back</DialogTitle>
-                        <DialogDescription className="text-center">
-                            Sign in to continue to your account.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="email-signin" className="text-right">Email</Label>
-                            <Input id="email-signin" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="col-span-3" required />
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="password-signin" className="text-right">Password</Label>
-                            <Input id="password-signin" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="col-span-3" required />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button type="submit" className="w-full">Sign In</Button>
-                    </DialogFooter>
-                </form>
-            </TabsContent>
-            <TabsContent value="signup">
-                <form onSubmit={handleSignUp}>
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl text-center font-headline">Create an Account</DialogTitle>
-                        <DialogDescription className="text-center">
-                           Enter your email and password to get started.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="email-signup" className="text-right">Email</Label>
-                            <Input id="email-signup" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="col-span-3" required />
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="password-signup" className="text-right">Password</Label>
-                            <Input id="password-signup" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="col-span-3" required minLength={6} />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button type="submit" className="w-full">Sign Up</Button>
-                    </DialogFooter>
-                </form>
-            </TabsContent>
-        </Tabs>
-    );
-}
-
 
 function AuthButtons() {
   const [user, loading, error] = useAuthState(auth);
@@ -165,19 +65,13 @@ function AuthButtons() {
     );
   }
 
-
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-         <Button>
+    <Button asChild>
+        <Link href="/auth/signin">
             <LogIn className="mr-2 h-4 w-4" />
             Sign In
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <AuthForm />
-      </DialogContent>
-    </Dialog>
+        </Link>
+    </Button>
   );
 }
 
