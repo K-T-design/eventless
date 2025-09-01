@@ -27,6 +27,7 @@ export interface UserProfile {
     name: string;
     phone: string;
     userType: UserType;
+    status: 'active' | 'suspended';
   };
   subscription: {
     status: 'inactive' | 'active' | 'expired';

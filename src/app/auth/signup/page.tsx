@@ -93,6 +93,7 @@ export default function SignUpPage() {
           name: values.fullName,
           phone: values.phone,
           userType: values.userType as UserType,
+          status: "active",
         },
         subscription: {
           status: "inactive",
