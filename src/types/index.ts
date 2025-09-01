@@ -17,7 +17,7 @@ export type Event = {
   createdAt: Timestamp;
 };
 
-export type UserType = 'individual' | 'organizer';
+export type UserType = 'individual' | 'organizer' | 'super_admin';
 
 export type OrgType = 'Student Union' | 'University Department' | 'Club/Society' | 'Business' | 'Other';
 
@@ -48,5 +48,3 @@ export interface UserProfile {
     lastLogin: Timestamp;
   };
 }
-
-    
