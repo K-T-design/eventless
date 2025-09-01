@@ -1,3 +1,4 @@
+
 import { Timestamp } from "firebase/firestore";
 
 export type Event = {
@@ -11,7 +12,9 @@ export type Event = {
   imageUrl: string;
   imageHint: string;
   description: string;
-  status?: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected';
+  organizerId: string;
+  createdAt: Timestamp;
 };
 
 export type UserType = 'individual' | 'organizer';
@@ -45,3 +48,5 @@ export interface UserProfile {
     lastLogin: Timestamp;
   };
 }
+
+    
