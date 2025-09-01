@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,6 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
+import { useState } from "react";
+import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
   accountName: z.string().min(3, "Account name seems too short."),
@@ -30,6 +33,10 @@ const formSchema = z.object({
 });
 
 export default function PayoutsSettingsPage() {
+  const [loading, setLoading] = useState(false);
+  
+  // In a real app, you would fetch the user's existing payout details here
+  // and use them as defaultValues.
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -40,11 +47,18 @@ export default function PayoutsSettingsPage() {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    toast({
-      title: "Details Saved!",
-      description: "Your payout information has been updated successfully.",
-    });
+    setLoading(true);
+    // Here you would typically save these details to Firestore
     console.log(values);
+    
+    // Simulate API call
+    setTimeout(() => {
+        toast({
+            title: "Details Saved!",
+            description: "Your payout information has been updated successfully.",
+        });
+        setLoading(false);
+    }, 1000);
   }
 
   return (
@@ -69,11 +83,14 @@ export default function PayoutsSettingsPage() {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="gtb">Guaranty Trust Bank</SelectItem>
-                    <SelectItem value="firstbank">First Bank of Nigeria</SelectItem>
-                    <SelectItem value="zenith">Zenith Bank</SelectItem>
-                    <SelectItem value="access">Access Bank</SelectItem>
-                    <SelectItem value="uba">United Bank for Africa</SelectItem>
+                    <SelectItem value="Guaranty Trust Bank">Guaranty Trust Bank</SelectItem>
+                    <SelectItem value="First Bank of Nigeria">First Bank of Nigeria</SelectItem>
+                    <SelectItem value="Zenith Bank">Zenith Bank</SelectItem>
+                    <SelectItem value="Access Bank">Access Bank</SelectItem>
+                    <SelectItem value="United Bank for Africa">United Bank for Africa</SelectItem>
+                     <SelectItem value="Kuda MFB">Kuda MFB</SelectItem>
+                    <SelectItem value="Opay">Opay</SelectItem>
+                    <SelectItem value="Palmpay">Palmpay</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -102,7 +119,7 @@ export default function PayoutsSettingsPage() {
               <FormItem>
                 <FormLabel>Account Name</FormLabel>
                 <FormControl>
-                  <Input placeholder="John Doe" {...field} />
+                  <Input placeholder="JOHN DOE" {...field} />
                 </FormControl>
                 <FormDescription>
                   This name should match the name on your bank account.
@@ -112,7 +129,10 @@ export default function PayoutsSettingsPage() {
             )}
           />
 
-          <Button type="submit" size="lg">Save Details</Button>
+          <Button type="submit" size="lg" disabled={loading}>
+             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save Details
+          </Button>
         </form>
       </Form>
     </div>
