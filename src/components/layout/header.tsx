@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ticket, LogOut, LogIn, LayoutDashboard } from "lucide-react";
+import { Ticket, LogOut, LogIn, LayoutDashboard, User } from "lucide-react";
 import { auth, firestore } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -32,6 +32,8 @@ function AuthButtons() {
         if (userDocSnap.exists()) {
           setUserProfile(userDocSnap.data() as UserProfile);
         }
+      } else {
+        setUserProfile(null);
       }
     };
     fetchUserProfile();
@@ -53,7 +55,7 @@ function AuthButtons() {
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-10 w-10">
                     <AvatarImage src={user.photoURL ?? ""} alt={user.displayName ?? ""} />
-                    <AvatarFallback>{user.email?.charAt(0).toUpperCase()}</AvatarFallback>
+                    <AvatarFallback>{userProfile?.basicInfo.name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
                 </Button>
             </DropdownMenuTrigger>
@@ -75,8 +77,17 @@ function AuthButtons() {
                     </Link>
                   </DropdownMenuItem>
               )}
+               <DropdownMenuItem asChild>
+                <Link href="/my-tickets">
+                  <Ticket className="mr-2 h-4 w-4" />
+                  My Tickets
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/check-in">Event Check-in</Link>
+                <Link href="/check-in">
+                    <User className="mr-2 h-4 w-4" />
+                    Event Check-in
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/settings/payouts">Payout Settings</Link>

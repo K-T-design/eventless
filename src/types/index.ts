@@ -48,3 +48,27 @@ export interface UserProfile {
     lastLogin: Timestamp;
   };
 }
+
+export type Ticket = {
+    id: string;
+    eventId: string;
+    userId: string;
+    purchaseDate: Timestamp;
+    status: 'valid' | 'used';
+    qrCodeUrl?: string; // URL to a generated QR code image
+    eventDetails?: { // Denormalized data for easier display
+        title: string;
+        date: Date;
+        location: string;
+    }
+}
+
+export type Transaction = {
+    id: string;
+    userId: string;
+    ticketId: string;
+    amount: number;
+    status: 'succeeded' | 'failed' | 'pending';
+    paymentGateway: 'paystack' | 'free' | 'other';
+    transactionDate: Timestamp;
+}

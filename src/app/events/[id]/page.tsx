@@ -3,17 +3,23 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, MapPin, Ticket, University } from "lucide-react";
+import { Calendar, Clock, Loader2, MapPin, Ticket, University } from "lucide-react";
 import Image from "next/image";
-import { firestore } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
-import type { Event } from "@/types";
+import { auth, firestore } from "@/lib/firebase";
+import { doc, getDoc, collection, addDoc, serverTimestamp, writeBatch } from "firebase/firestore";
+import type { Event, Transaction } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { toast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
 
 export default function EventDetailPage({ params }: { params: { id: string } }) {
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
+  const [purchaseLoading, setPurchaseLoading] = useState(false);
+  const [user, authLoading] = useAuthState(auth);
+  const router = useRouter();
 
   useEffect(() => {
     if (params.id) {
@@ -31,6 +37,11 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
           } as Event);
         } else {
           console.error("No such document!");
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Event not found.",
+          })
         }
         setLoading(false);
       };
@@ -39,7 +50,74 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
     }
   }, [params.id]);
 
-  if (loading) {
+  const handleBuyTicket = async () => {
+    if (!user) {
+        toast({
+            variant: "destructive",
+            title: "Not logged in",
+            description: "You must be signed in to purchase a ticket.",
+        });
+        router.push('/auth/signin');
+        return;
+    }
+
+    if (!event) return;
+
+    setPurchaseLoading(true);
+
+    try {
+        const batch = writeBatch(firestore);
+
+        // 1. Create the Ticket document
+        const ticketRef = doc(collection(firestore, "tickets"));
+        const newTicket = {
+            eventId: event.id,
+            userId: user.uid,
+            purchaseDate: serverTimestamp(),
+            status: 'valid' as const,
+            // Denormalized data for easier access on the "My Tickets" page
+            eventDetails: {
+                title: event.title,
+                date: event.date,
+                location: event.location,
+            }
+        };
+        batch.set(ticketRef, newTicket);
+
+        // 2. Create the Transaction document
+        const transactionRef = doc(collection(firestore, "transactions"));
+        const newTransaction: Omit<Transaction, 'id'> = {
+            userId: user.uid,
+            ticketId: ticketRef.id,
+            amount: event.price,
+            status: 'succeeded',
+            paymentGateway: event.price > 0 ? 'paystack' : 'free', // Placeholder
+            transactionDate: serverTimestamp(),
+        };
+        batch.set(transactionRef, newTransaction);
+        
+        await batch.commit();
+
+        toast({
+            title: "Success!",
+            description: "Your ticket has been secured. View it in 'My Tickets'.",
+        });
+        
+        router.push('/my-tickets');
+
+    } catch (error) {
+        console.error("Error purchasing ticket: ", error);
+        toast({
+            variant: "destructive",
+            title: "Purchase Failed",
+            description: "Something went wrong. Please try again.",
+        });
+    } finally {
+        setPurchaseLoading(false);
+    }
+  };
+
+  if (loading || authLoading) {
     return (
        <div className="container mx-auto max-w-5xl py-12 px-4">
           <div className="grid md:grid-cols-2 gap-8 md:gap-12">
@@ -63,6 +141,8 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
   if (!event) {
     return <div className="text-center py-12">Event not found.</div>;
   }
+  
+  const isEventInThePast = new Date() > event.date;
 
   return (
     <div className="container mx-auto max-w-5xl py-12 px-4">
@@ -104,11 +184,20 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
                         {event.price > 0 ? `₦${event.price.toLocaleString()}` : 'Free'}
                     </p>
                 </div>
-                <Button size="lg" className="flex items-center gap-2">
-                    <Ticket className="h-5 w-5"/>
-                    Buy Ticket
+                <Button size="lg" className="flex items-center gap-2" onClick={handleBuyTicket} disabled={purchaseLoading || !user || isEventInThePast}>
+                    {purchaseLoading ? (
+                        <Loader2 className="h-5 w-5 animate-spin" /> 
+                    ) : (
+                        <Ticket className="h-5 w-5"/>
+                    )}
+                    {isEventInThePast ? "Event has passed" : (event.price > 0 ? "Buy Ticket" : "Get Ticket")}
                 </Button>
             </div>
+            {!user && !authLoading && (
+                <p className="text-center text-sm text-muted-foreground mt-4">
+                    You must be <a href="/auth/signin" className="underline font-semibold">signed in</a> to get a ticket.
+                </p>
+            )}
         </div>
         
         <div className="md:col-span-2">
