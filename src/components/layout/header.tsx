@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,19 +11,110 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ticket, User, LogOut, LogIn } from "lucide-react";
+import { Ticket, LogOut, LogIn } from "lucide-react";
 import { auth } from "@/lib/firebase";
-import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+} from "firebase/auth";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+
+function AuthForm() {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+
+    const handleSignUp = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await createUserWithEmailAndPassword(auth, email, password);
+            toast({ title: "Account Created", description: "You have been successfully signed up." });
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Sign Up Failed", description: error.message });
+        }
+    };
+
+    const handleSignIn = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+            toast({ title: "Signed In", description: "You have been successfully signed in." });
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Sign In Failed", description: error.message });
+        }
+    };
+
+    return (
+        <Tabs defaultValue="signin" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="signin">Sign In</TabsTrigger>
+                <TabsTrigger value="signup">Sign Up</TabsTrigger>
+            </TabsList>
+            <TabsContent value="signin">
+                <form onSubmit={handleSignIn}>
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl text-center font-headline">Welcome Back</DialogTitle>
+                        <DialogDescription className="text-center">
+                            Sign in to continue to your account.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="email-signin" className="text-right">Email</Label>
+                            <Input id="email-signin" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="col-span-3" required />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="password-signin" className="text-right">Password</Label>
+                            <Input id="password-signin" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="col-span-3" required />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button type="submit" className="w-full">Sign In</Button>
+                    </DialogFooter>
+                </form>
+            </TabsContent>
+            <TabsContent value="signup">
+                <form onSubmit={handleSignUp}>
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl text-center font-headline">Create an Account</DialogTitle>
+                        <DialogDescription className="text-center">
+                           Enter your email and password to get started.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                         <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="email-signup" className="text-right">Email</Label>
+                            <Input id="email-signup" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="col-span-3" required />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="password-signup" className="text-right">Password</Label>
+                            <Input id="password-signup" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="col-span-3" required minLength={6} />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button type="submit" className="w-full">Sign Up</Button>
+                    </DialogFooter>
+                </form>
+            </TabsContent>
+        </Tabs>
+    );
+}
+
 
 function AuthButtons() {
   const [user, loading, error] = useAuthState(auth);
@@ -43,14 +135,14 @@ function AuthButtons() {
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-10 w-10">
                     <AvatarImage src={user.photoURL ?? ""} alt={user.displayName ?? ""} />
-                    <AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback>
+                    <AvatarFallback>{user.email?.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{user.displayName}</p>
+                <p className="text-sm font-medium leading-none">{user.displayName || 'User'}</p>
                 <p className="text-xs leading-none text-muted-foreground">
                   {user.email}
                 </p>
@@ -73,14 +165,6 @@ function AuthButtons() {
     );
   }
 
-  const handleGoogleSignIn = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error("Error signing in with Google:", error);
-    }
-  };
 
   return (
     <Dialog>
@@ -91,18 +175,7 @@ function AuthButtons() {
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle className="text-2xl text-center font-headline">Welcome to E-Ventless</DialogTitle>
-          <DialogDescription className="text-center">
-            Sign in to continue to your account.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-           <Button onClick={handleGoogleSignIn} variant="outline" size="lg">
-              <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 23.4 172.9 62.3l-67.4 64.8C297.7 99.8 274.9 88 248 88c-73.2 0-132.3 59.2-132.3 132.3s59.1 132.3 132.3 132.3c76.9 0 111.2-51.8 115.8-77.9H248v-62h239.5c3.3 15.2 4.5 30.8 4.5 46.8z"></path></svg>
-              Sign in with Google
-          </Button>
-        </div>
+        <AuthForm />
       </DialogContent>
     </Dialog>
   );
