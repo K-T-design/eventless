@@ -20,7 +20,7 @@ export default function DiscoverPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedUniversity, setSelectedUniversity] = useState<string>("");
+  const [selectedUniversity, setSelectedUniversity] = useState<string>("all");
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -56,7 +56,7 @@ export default function DiscoverPage() {
         event.title.toLowerCase().includes(searchTerm.toLowerCase())
       )
       .filter((event) =>
-        selectedUniversity ? event.university === selectedUniversity : true
+        selectedUniversity !== 'all' ? event.university === selectedUniversity : true
       );
   }, [events, searchTerm, selectedUniversity]);
   
@@ -82,12 +82,12 @@ export default function DiscoverPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Select onValueChange={setSelectedUniversity} value={selectedUniversity}>
+        <Select onValueChange={setSelectedUniversity} defaultValue={selectedUniversity}>
           <SelectTrigger className="w-full md:w-[280px]">
             <SelectValue placeholder="Filter by university" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Universities</SelectItem>
+            <SelectItem value="all">All Universities</SelectItem>
             {universities.map(uni => (
               <SelectItem key={uni} value={uni}>{uni}</SelectItem>
             ))}
