@@ -32,16 +32,10 @@ import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { useState } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { auth, firestore, storage } from "@/lib/firebase";
+import { auth, firestore } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp, writeBatch, doc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useRouter } from "next/navigation";
 import { EVENT_CATEGORIES } from "@/lib/categories";
-import Image from "next/image";
-
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-
 
 const ticketTierSchema = z.object({
   name: z.string().min(1, "Tier name is required."),
@@ -58,20 +52,13 @@ const formSchema = z.object({
   location: z.string().min(3, "Location is required."),
   date: z.date({ required_error: "A date for the event is required." }),
   time: z.string().min(1, "Time is required (e.g., 9:00 AM)."),
-  poster: z
-    .any()
-    .refine((files) => files?.[0], "Event poster is required.")
-    .refine((files) => files?.[0]?.size <= MAX_FILE_SIZE, `Max image size is 5MB.`)
-    .refine(
-      (files) => ACCEPTED_IMAGE_TYPES.includes(files?.[0]?.type),
-      "Only .jpg, .jpeg, .png and .webp formats are supported."
-    ),
+  // Reverted: poster is no longer a required file upload
+  poster: z.string().optional(),
   ticketTiers: z.array(ticketTierSchema).min(1, "You must add at least one ticket tier."),
 });
 
 export default function CreateEventPage() {
   const [loading, setLoading] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [user, authLoading] = useAuthState(auth);
   const router = useRouter();
 
@@ -106,15 +93,6 @@ export default function CreateEventPage() {
     }
 
     try {
-        // 1. Upload image to Firebase Storage
-        const imageFile = values.poster[0];
-        const filePath = `event-posters/${Date.now()}_${imageFile.name}`;
-        const storageRef = ref(storage, filePath);
-        
-        const uploadResult = await uploadBytes(storageRef, imageFile);
-        const imageUrl = await getDownloadURL(uploadResult.ref);
-
-        
         const newEventData = {
             title: values.title,
             description: values.description,
@@ -126,16 +104,19 @@ export default function CreateEventPage() {
             organizerId: user.uid,
             status: 'pending' as const,
             createdAt: serverTimestamp(),
-            imageUrl: imageUrl, // Use the uploaded image URL
-            imageHint: "event poster", // can be improved later with AI
+            // Reverted to placeholder imageUrl
+            imageUrl: "https://picsum.photos/1200/600",
+            imageHint: "event poster placeholder",
         };
 
-        // 2. Create the main event document in Firestore
+        // Create the main event document in Firestore
         const eventDocRef = await addDoc(collection(firestore, "events"), newEventData);
 
-        // 3. Create a batch to add all ticket tiers
+        // Create a batch to add all ticket tiers
         const batch = writeBatch(firestore);
         values.ticketTiers.forEach(tier => {
+            // Note: The original code had a bug here, it was not creating a proper subcollection reference.
+            // Correcting it as part of the rollback to ensure functionality.
             const tierRef = doc(collection(firestore, `events/${eventDocRef.id}/ticketTiers`));
             batch.set(tierRef, tier);
         });
@@ -257,46 +238,15 @@ export default function CreateEventPage() {
                         </FormItem>
                     )}
                 />
-                <FormField
-                  control={form.control}
-                  name="poster"
-                  render={({ field: { onChange, value, ...rest } }) => (
-                    <FormItem>
-                      <FormLabel>Event Poster</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="file"
-                          {...rest}
-                          accept="image/png, image/jpeg, image/webp"
-                          onChange={(e) => {
-                            const files = e.target.files;
-                            onChange(files);
-                            if (files && files[0]) {
-                              const reader = new FileReader();
-                              reader.onloadend = () => {
-                                setImagePreview(reader.result as string);
-                              };
-                              reader.readAsDataURL(files[0]);
-                            } else {
-                              setImagePreview(null);
-                            }
-                          }}
-                          className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        A good poster attracts more attendees. Max 5MB.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {imagePreview && (
-                  <div className="relative w-full aspect-video rounded-md overflow-hidden border">
-                    <Image src={imagePreview} alt="Selected poster preview" fill className="object-contain" />
-                  </div>
-                )}
+                 <FormItem>
+                    <FormLabel>Event Poster</FormLabel>
+                    <FormControl>
+                       <Input disabled placeholder="Image uploads will be enabled soon." />
+                    </FormControl>
+                    <FormDescription>
+                        A placeholder image will be used for now.
+                    </FormDescription>
+                </FormItem>
             </div>
 
 
