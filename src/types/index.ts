@@ -5,6 +5,7 @@ export type Event = {
   id: string;
   title: string;
   university: string;
+  category: string;
   date: Date;
   time: string;
   location: string;

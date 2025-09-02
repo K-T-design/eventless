@@ -35,12 +35,14 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { auth, firestore } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
+import { EVENT_CATEGORIES } from "@/lib/categories";
 
 
 const formSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters long."),
   description: z.string().min(20, "Description must be at least 20 characters long.").max(500, "Description is too long."),
   university: z.string().min(1, "Please select a university."),
+  category: z.string().min(1, "Please select a category."),
   location: z.string().min(3, "Location is required."),
   date: z.date({ required_error: "A date for the event is required." }),
   time: z.string().min(1, "Time is required (e.g., 9:00 AM)."),
@@ -170,30 +172,54 @@ export default function CreateEventPage() {
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="university"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>University</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select the host university" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="University of Lagos">University of Lagos</SelectItem>
-                    <SelectItem value="University of Ibadan">University of Ibadan</SelectItem>
-                    <SelectItem value="Covenant University">Covenant University</SelectItem>
-                    <SelectItem value="Obafemi Awolowo University">Obafemi Awolowo University</SelectItem>
-                    <SelectItem value="University of Nigeria, Nsukka">University of Nigeria, Nsukka</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <FormField
+              control={form.control}
+              name="university"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>University</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select the host university" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="University of Lagos">University of Lagos</SelectItem>
+                      <SelectItem value="University of Ibadan">University of Ibadan</SelectItem>
+                      <SelectItem value="Covenant University">Covenant University</SelectItem>
+                      <SelectItem value="Obafemi Awolowo University">Obafemi Awolowo University</SelectItem>
+                      <SelectItem value="University of Nigeria, Nsukka">University of Nigeria, Nsukka</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Event Category</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a category" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {EVENT_CATEGORIES.map(category => (
+                        <SelectItem key={category.value} value={category.value}>{category.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <FormField
@@ -328,5 +354,3 @@ export default function CreateEventPage() {
     </div>
   );
 }
-
-    

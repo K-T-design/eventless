@@ -15,12 +15,14 @@ import { Search } from "lucide-react";
 import { firestore } from "@/lib/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EVENT_CATEGORIES } from "@/lib/categories";
 
 export default function DiscoverPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUniversity, setSelectedUniversity] = useState<string>("all");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -49,7 +51,6 @@ export default function DiscoverPage() {
     fetchEvents();
   }, []);
   
-  // Memoize the filtering logic to avoid re-computation on every render
   const filteredEvents = useMemo(() => {
     return events
       .filter((event) =>
@@ -57,10 +58,12 @@ export default function DiscoverPage() {
       )
       .filter((event) =>
         selectedUniversity !== 'all' ? event.university === selectedUniversity : true
+      )
+      .filter((event) =>
+        selectedCategory !== 'all' ? event.category === selectedCategory : true
       );
-  }, [events, searchTerm, selectedUniversity]);
+  }, [events, searchTerm, selectedUniversity, selectedCategory]);
   
-  // Create a unique list of universities from the approved events
   const universities = useMemo(() => [...new Set(events.map(event => event.university))], [events]);
 
   return (
@@ -90,6 +93,17 @@ export default function DiscoverPage() {
             <SelectItem value="all">All Universities</SelectItem>
             {universities.map(uni => (
               <SelectItem key={uni} value={uni}>{uni}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+         <Select onValueChange={setSelectedCategory} defaultValue={selectedCategory}>
+          <SelectTrigger className="w-full md:w-[280px]">
+            <SelectValue placeholder="Filter by category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Categories</SelectItem>
+            {EVENT_CATEGORIES.map(cat => (
+              <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
