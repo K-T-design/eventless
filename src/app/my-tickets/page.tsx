@@ -60,7 +60,7 @@ export default function MyTicketsPage() {
             <h1 className="text-4xl font-bold font-headline mb-8">My Tickets</h1>
              <div className="grid gap-6 md:grid-cols-2">
                 {[...Array(4)].map((_, i) => (
-                    <Skeleton key={i} className="h-48 w-full" />
+                    <Skeleton key={i} className="h-56 w-full" />
                 ))}
              </div>
         </div>
@@ -101,7 +101,7 @@ export default function MyTicketsPage() {
               <CardHeader>
                 <CardTitle>{ticket.eventDetails?.title ?? 'Event Title'}</CardTitle>
                  <CardDescription>
-                    Ticket ID: {ticket.id}
+                    {ticket.tier.name} Ticket
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex-grow space-y-3">
@@ -113,6 +113,9 @@ export default function MyTicketsPage() {
                     <MapPin className="h-4 w-4" />
                     <span>{ticket.eventDetails?.location ?? 'Location'}</span>
                 </div>
+                 <p className="text-sm text-muted-foreground pt-2">
+                    Ticket ID: {ticket.id}
+                </p>
               </CardContent>
               <CardFooter className="flex justify-between items-end bg-muted/50 p-4 mt-4">
                 <div>

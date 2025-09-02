@@ -1,6 +1,12 @@
 
 import { Timestamp } from "firebase/firestore";
 
+export type TicketTier = {
+  name: string;
+  price: number;
+  description?: string;
+}
+
 export type Event = {
   id: string;
   title: string;
@@ -9,7 +15,7 @@ export type Event = {
   date: Date;
   time: string;
   location:string;
-  price: number;
+  ticketTiers: TicketTier[];
   imageUrl: string;
   imageHint: string;
   description: string;
@@ -58,6 +64,7 @@ export type Ticket = {
     purchaseDate: Timestamp;
     status: 'valid' | 'used';
     qrCodeData: string; // The raw data for the QR code
+    tier: TicketTier;
     eventDetails?: { // Denormalized data for easier display
         title: string;
         date: Date;

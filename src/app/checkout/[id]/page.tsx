@@ -27,7 +27,7 @@ import {
   collection,
   serverTimestamp,
 } from "firebase/firestore";
-import type { Event, Ticket, Transaction } from "@/types";
+import type { Event, Ticket, Transaction, TicketTier } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -38,6 +38,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const SERVICE_FEE = 150;
 
+// Find the default tier (lowest price)
+const getDefaultTier = (tiers: TicketTier[]): TicketTier | null => {
+    if (!tiers || tiers.length === 0) return null;
+    return tiers.reduce((min, tier) => tier.price < min.price ? tier : min, tiers[0]);
+}
+
 export default function CheckoutPage({ params }: { params: { id: string } }) {
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,6 +51,10 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
   const [user, authLoading] = useAuthState(auth);
   const router = useRouter();
   const { toast } = useToast();
+
+  // For now, we'll just use the default (lowest price) tier.
+  // In the future, this could be passed via URL params.
+  const [selectedTier, setSelectedTier] = useState<TicketTier | null>(null);
 
   useEffect(() => {
     if (params.id) {
@@ -55,11 +65,13 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
 
         if (docSnap.exists()) {
           const data = docSnap.data();
-          setEvent({
+          const fetchedEvent = {
             id: docSnap.id,
             ...data,
             date: data.date.toDate(),
-          } as Event);
+          } as Event;
+          setEvent(fetchedEvent);
+          setSelectedTier(getDefaultTier(fetchedEvent.ticketTiers));
         } else {
           toast({
             variant: "destructive",
@@ -76,7 +88,7 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
   }, [params.id, router, toast]);
 
   const handlePurchase = async () => {
-    if (!user || !event) return;
+    if (!user || !event || !selectedTier) return;
 
     setProcessing(true);
     try {
@@ -87,6 +99,7 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
         purchaseDate: serverTimestamp(),
         status: "valid",
         qrCodeData: `eventless-ticket:${event.id}:${user.uid}`, // Simple QR data
+        tier: selectedTier, // Save the selected tier
         eventDetails: {
           title: event.title,
           date: event.date,
@@ -95,13 +108,13 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
       } as Omit<Ticket, 'id'>);
 
       // 2. Create Transaction Document
-      const finalAmount = event.price > 0 ? event.price + SERVICE_FEE : 0;
+      const finalAmount = selectedTier.price > 0 ? selectedTier.price + SERVICE_FEE : 0;
       await addDoc(collection(firestore, "transactions"), {
         userId: user.uid,
         ticketId: ticketRef.id,
         amount: finalAmount,
         status: "succeeded",
-        paymentGateway: event.price > 0 ? "paystack" : "free", // Placeholder
+        paymentGateway: selectedTier.price > 0 ? "paystack" : "free", // Placeholder
         transactionDate: serverTimestamp(),
         reference: `evt-${Date.now()}`,
       } as Omit<Transaction, 'id'>);
@@ -125,6 +138,9 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
     }
   };
 
+  const ticketPrice = selectedTier?.price ?? 0;
+  const totalPrice = ticketPrice > 0 ? ticketPrice + SERVICE_FEE : 0;
+
   if (loading || authLoading) {
     return (
       <div className="container mx-auto max-w-lg py-12 px-4">
@@ -133,11 +149,11 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
     );
   }
 
-  if (!event) {
+  if (!event || !selectedTier) {
     // This case is mostly handled by the redirect in useEffect, but it's a good fallback.
     return (
       <div className="container mx-auto max-w-lg py-12 px-4 text-center">
-        Event not found.
+        Event or ticket information not found.
       </div>
     );
   }
@@ -202,8 +218,8 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
             <h4 className="font-semibold mb-3">Order Summary</h4>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <p className="text-muted-foreground">Ticket Price:</p>
-                <p>₦{event.price.toLocaleString()}</p>
+                <p className="text-muted-foreground">Ticket ({selectedTier.name}):</p>
+                <p>₦{ticketPrice.toLocaleString()}</p>
               </div>
                <div className="flex justify-between">
                 <p className="text-muted-foreground">Service Fee:</p>
@@ -212,7 +228,7 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
               <Separator />
               <div className="flex justify-between font-bold text-base">
                 <p>Total:</p>
-                <p>₦{(event.price + SERVICE_FEE).toLocaleString()}</p>
+                <p>₦{totalPrice.toLocaleString()}</p>
               </div>
             </div>
           </div>
@@ -245,4 +261,3 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
     </div>
   );
 }
-

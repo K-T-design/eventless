@@ -7,12 +7,18 @@ import { Calendar, Clock, Loader2, MapPin, Ticket, University } from "lucide-rea
 import Image from "next/image";
 import { auth, firestore } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
-import type { Event } from "@/types";
+import type { Event, TicketTier } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { toast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
+
+const getLowestPrice = (tiers: TicketTier[] | undefined) => {
+    if (!tiers || tiers.length === 0) return 0;
+    return tiers.reduce((min, tier) => tier.price < min ? tier.price : min, tiers[0].price);
+}
 
 export default function EventDetailPage({ params }: { params: { id: string } }) {
   const [event, setEvent] = useState<Event | null>(null);
@@ -63,6 +69,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
     if (!event) return;
     
     // Redirect to the new dedicated checkout page
+    // We will enhance this later to select a specific tier
     router.push(`/checkout/${event.id}`);
   };
 
@@ -92,6 +99,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
   }
   
   const isEventInThePast = new Date() > event.date;
+  const lowestPrice = getLowestPrice(event.ticketTiers);
 
   return (
     <div className="container mx-auto max-w-5xl py-12 px-4">
@@ -104,6 +112,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
                 className="object-cover"
                 data-ai-hint={event.imageHint}
             />
+             <Badge className="absolute top-4 left-4" variant="secondary">{event.category}</Badge>
         </div>
         
         <div className="flex flex-col justify-center">
@@ -128,14 +137,14 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
             </div>
              <div className="mt-8 flex items-center justify-between bg-muted/50 p-6 rounded-lg">
                 <div>
-                    <p className="text-sm text-muted-foreground">Price</p>
+                    <p className="text-sm text-muted-foreground">Starting from</p>
                     <p className="text-3xl font-bold text-primary">
-                        {event.price > 0 ? `₦${event.price.toLocaleString()}` : 'Free'}
+                        {lowestPrice > 0 ? `₦${lowestPrice.toLocaleString()}` : 'Free'}
                     </p>
                 </div>
                 <Button size="lg" className="flex items-center gap-2" onClick={handleGetTicket} disabled={authLoading || !user || isEventInThePast}>
                     <Ticket className="h-5 w-5"/>
-                    {isEventInThePast ? "Event has passed" : (event.price > 0 ? "Buy Ticket" : "Get Ticket")}
+                    {isEventInThePast ? "Event has passed" : "Get Tickets"}
                 </Button>
             </div>
             {!user && !authLoading && (
@@ -146,10 +155,30 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
         </div>
         
         <div className="md:col-span-2">
-            <h2 className="text-3xl font-bold font-headline mb-4 border-b pb-2">About this Event</h2>
-            <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                {event.description}
-            </p>
+            <div className="grid md:grid-cols-3 gap-8">
+                <div className="md:col-span-2">
+                    <h2 className="text-3xl font-bold font-headline mb-4 border-b pb-2">About this Event</h2>
+                    <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                        {event.description}
+                    </p>
+                </div>
+                 <div>
+                    <h2 className="text-3xl font-bold font-headline mb-4 border-b pb-2">Tickets</h2>
+                     <div className="space-y-4">
+                        {event.ticketTiers.map(tier => (
+                            <div key={tier.name} className="p-4 border rounded-lg bg-card">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="font-bold text-lg">{tier.name}</h3>
+                                    <p className="font-bold text-primary">
+                                        {tier.price > 0 ? `₦${tier.price.toLocaleString()}` : 'Free'}
+                                    </p>
+                                </div>
+                                {tier.description && <p className="text-sm text-muted-foreground mt-1">{tier.description}</p>}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
         </div>
       </div>
     </div>
