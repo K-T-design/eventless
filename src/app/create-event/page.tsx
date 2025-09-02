@@ -25,17 +25,23 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Info, Calendar as CalendarIcon, Upload, Loader2, Trash2, PlusCircle } from "lucide-react";
+import { Info, Calendar as CalendarIcon, Upload, Loader2, Trash2, PlusCircle, Image as ImageIcon } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { useState } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { auth, firestore } from "@/lib/firebase";
+import { auth, firestore, storage } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp, writeBatch, doc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useRouter } from "next/navigation";
 import { EVENT_CATEGORIES } from "@/lib/categories";
+import Image from "next/image";
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+
 
 const ticketTierSchema = z.object({
   name: z.string().min(1, "Tier name is required."),
@@ -52,11 +58,20 @@ const formSchema = z.object({
   location: z.string().min(3, "Location is required."),
   date: z.date({ required_error: "A date for the event is required." }),
   time: z.string().min(1, "Time is required (e.g., 9:00 AM)."),
+  poster: z
+    .any()
+    .refine((file) => file, "Event poster is required.")
+    .refine((file) => file?.size <= MAX_FILE_SIZE, `Max image size is 5MB.`)
+    .refine(
+      (file) => ACCEPTED_IMAGE_TYPES.includes(file?.type),
+      "Only .jpg, .jpeg, .png and .webp formats are supported."
+    ),
   ticketTiers: z.array(ticketTierSchema).min(1, "You must add at least one ticket tier."),
 });
 
 export default function CreateEventPage() {
   const [loading, setLoading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [user, authLoading] = useAuthState(auth);
   const router = useRouter();
 
@@ -91,7 +106,14 @@ export default function CreateEventPage() {
     }
 
     try {
-        const randomImageId = Math.floor(Math.random() * 100);
+        // 1. Upload image to Firebase Storage
+        const imageFile = values.poster;
+        const fileExtension = imageFile.name.split('.').pop();
+        const posterFileName = `poster-${Date.now()}.${fileExtension}`;
+        const storageRef = ref(storage, `event-posters/${posterFileName}`);
+        await uploadBytes(storageRef, imageFile);
+        const imageUrl = await getDownloadURL(storageRef);
+
         
         const newEventData = {
             title: values.title,
@@ -104,19 +126,19 @@ export default function CreateEventPage() {
             organizerId: user.uid,
             status: 'pending' as const,
             createdAt: serverTimestamp(),
-            // TODO: Implement actual image upload
-            imageUrl: `https://picsum.photos/1200/600?random=${randomImageId}`,
-            imageHint: "event image",
+            imageUrl: imageUrl, // Use the uploaded image URL
+            imageHint: "event poster", // can be improved later with AI
         };
 
-        // Create the main event document
+        // 2. Create the main event document in Firestore
         const eventRef = await addDoc(collection(firestore, "events"), newEventData);
 
-        // Create a batch to add all ticket tiers
+        // 3. Create a batch to add all ticket tiers
         const batch = writeBatch(firestore);
         values.ticketTiers.forEach(tier => {
+            const tierWithNumericPrice = { ...tier, price: Number(tier.price) };
             const tierRef = doc(collection(firestore, `events/${eventRef.id}/ticketTiers`));
-            batch.set(tierRef, tier);
+            batch.set(tierRef, tierWithNumericPrice);
         });
         await batch.commit();
 
@@ -236,25 +258,45 @@ export default function CreateEventPage() {
                         </FormItem>
                     )}
                 />
-                 <FormItem>
-                    <FormLabel>Event Poster</FormLabel>
-                    <FormControl>
-                        <div className="flex items-center justify-center w-full">
-                            <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted">
-                                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                    <Upload className="w-8 h-8 mb-4 text-muted-foreground"/>
-                                    <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-                                    <p className="text-xs text-muted-foreground">SVG, PNG, JPG (MAX. 1200x600px)</p>
-                                </div>
-                                <input id="dropzone-file" type="file" className="hidden" accept="image/*" />
-                            </label>
-                        </div> 
-                    </FormControl>
-                    <FormDescription>
-                        Image upload is not yet implemented. A random placeholder image will be used.
-                    </FormDescription>
-                    <FormMessage />
-                </FormItem>
+                <FormField
+                  control={form.control}
+                  name="poster"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Event Poster</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="file"
+                          accept="image/png, image/jpeg, image/webp"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            field.onChange(file);
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                setImagePreview(reader.result as string);
+                              };
+                              reader.readAsDataURL(file);
+                            } else {
+                              setImagePreview(null);
+                            }
+                          }}
+                          className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        A good poster attracts more attendees. Max 5MB.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {imagePreview && (
+                  <div className="relative w-full aspect-video rounded-md overflow-hidden border">
+                    <Image src={imagePreview} alt="Selected poster preview" fill className="object-contain" />
+                  </div>
+                )}
             </div>
 
 
@@ -435,7 +477,7 @@ export default function CreateEventPage() {
                             )}
                         </div>
                     ))}
-                    <FormMessage>{form.formState.errors.ticketTiers?.message}</FormMessage>
+                    <FormMessage>{form.formState.errors.ticketTiers?.root?.message}</FormMessage>
                 </div>
             </div>
 
@@ -448,5 +490,3 @@ export default function CreateEventPage() {
     </div>
   );
 }
-
-    
