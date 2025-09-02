@@ -8,7 +8,7 @@ export type Event = {
   category: string;
   date: Date;
   time: string;
-  location: string;
+  location:string;
   price: number;
   imageUrl: string;
   imageHint: string;
@@ -57,7 +57,7 @@ export type Ticket = {
     userId: string;
     purchaseDate: Timestamp;
     status: 'valid' | 'used';
-    qrCodeUrl?: string; // URL to a generated QR code image
+    qrCodeData: string; // The raw data for the QR code
     eventDetails?: { // Denormalized data for easier display
         title: string;
         date: Date;
@@ -73,4 +73,6 @@ export type Transaction = {
     status: 'succeeded' | 'failed' | 'pending';
     paymentGateway: 'paystack' | 'free' | 'other';
     transactionDate: Timestamp;
+    // Paystack specific reference
+    reference?: string;
 }
