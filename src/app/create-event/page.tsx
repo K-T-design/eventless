@@ -81,8 +81,23 @@ export default function CreateEventPage() {
 
     try {
         const randomImageId = Math.floor(Math.random() * 100);
+        
+        // Convert the single price into a ticketTiers array
+        const ticketTiers = [{
+            name: "Regular",
+            price: values.price,
+            description: "Standard event ticket"
+        }];
+
         const newEvent = {
-            ...values,
+            title: values.title,
+            description: values.description,
+            university: values.university,
+            category: values.category,
+            location: values.location,
+            date: values.date,
+            time: values.time,
+            ticketTiers: ticketTiers, // Use the new array
             organizerId: user.uid,
             status: 'pending' as const,
             createdAt: serverTimestamp(),
@@ -297,12 +312,12 @@ export default function CreateEventPage() {
               name="price"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Ticket Price (₦)</FormLabel>
+                  <FormLabel>Ticket Price (₦) - For Regular Tier</FormLabel>
                   <FormControl>
                     <Input type="number" placeholder="Enter 0 for a free event" {...field} />
                   </FormControl>
                    <FormDescription>
-                    A fee of ₦150 will be added at checkout for paid events.
+                    This will be the price for a 'Regular' ticket. A fee of ₦150 will be added at checkout for paid events.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

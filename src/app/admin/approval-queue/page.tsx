@@ -29,6 +29,7 @@ export default function ApprovalQueuePage() {
               id: doc.id,
               ...data,
               date: data.date.toDate(),
+              createdAt: data.createdAt.toDate(),
           } as Event;
       });
       setPendingEvents(eventsList);
@@ -93,7 +94,7 @@ export default function ApprovalQueuePage() {
                         <TableRow key={event.id}>
                             <TableCell className="font-medium">{event.title}</TableCell>
                             <TableCell>{event.university}</TableCell>
-                            <TableCell>{format(event.createdAt.toDate(), "PPP")}</TableCell>
+                            <TableCell>{format(event.createdAt, "PPP")}</TableCell>
                             <TableCell>
                                 <Badge variant="secondary">{event.status}</Badge>
                             </TableCell>
