@@ -32,17 +32,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const SERVICE_FEE = 150;
-
-// Find the default tier (lowest price)
-const getDefaultTier = (tiers: TicketTier[]): TicketTier | null => {
-    if (!tiers || tiers.length === 0) return null;
-    return tiers.reduce((min, tier) => tier.price < min.price ? tier : min, tiers[0]);
-}
 
 export default function CheckoutPage({ params }: { params: { id: string } }) {
   const [event, setEvent] = useState<Event | null>(null);
@@ -50,17 +44,29 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
   const [processing, setProcessing] = useState(false);
   const [user, authLoading] = useAuthState(auth);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
 
-  // For now, we'll just use the default (lowest price) tier.
-  // In the future, this could be passed via URL params.
   const [selectedTier, setSelectedTier] = useState<TicketTier | null>(null);
 
   useEffect(() => {
     if (params.id) {
       const fetchEvent = async () => {
         setLoading(true);
-        const docRef = doc(firestore, "events", params.id);
+        const eventId = params.id;
+        const tierName = searchParams.get("tier");
+
+        if (!tierName) {
+           toast({
+            variant: "destructive",
+            title: "Error",
+            description: "No ticket tier selected.",
+          });
+          router.push(`/events/${eventId}`);
+          return;
+        }
+
+        const docRef = doc(firestore, "events", eventId);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
@@ -71,7 +77,19 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
             date: data.date.toDate(),
           } as Event;
           setEvent(fetchedEvent);
-          setSelectedTier(getDefaultTier(fetchedEvent.ticketTiers));
+          
+          const tier = fetchedEvent.ticketTiers.find(t => t.name === tierName);
+          if (tier) {
+            setSelectedTier(tier);
+          } else {
+             toast({
+              variant: "destructive",
+              title: "Error",
+              description: "Selected ticket tier not found.",
+            });
+            router.push(`/events/${eventId}`);
+          }
+
         } else {
           toast({
             variant: "destructive",
@@ -85,7 +103,7 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
 
       fetchEvent();
     }
-  }, [params.id, router, toast]);
+  }, [params.id, router, toast, searchParams]);
 
   const handlePurchase = async () => {
     if (!user || !event || !selectedTier) return;
@@ -153,7 +171,15 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
     // This case is mostly handled by the redirect in useEffect, but it's a good fallback.
     return (
       <div className="container mx-auto max-w-lg py-12 px-4 text-center">
-        Event or ticket information not found.
+        <Card>
+            <CardHeader>
+                <CardTitle>Loading...</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p>Verifying ticket details...</p>
+                <Loader2 className="mx-auto mt-4 h-8 w-8 animate-spin" />
+            </CardContent>
+        </Card>
       </div>
     );
   }

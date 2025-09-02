@@ -14,6 +14,7 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { toast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 
 const getLowestPrice = (tiers: TicketTier[] | undefined) => {
     if (!tiers || tiers.length === 0) return 0;
@@ -54,24 +55,6 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
       fetchEvent();
     }
   }, [params.id]);
-
-  const handleGetTicket = () => {
-    if (!user) {
-        toast({
-            variant: "destructive",
-            title: "Not logged in",
-            description: "You must be signed in to purchase a ticket.",
-        });
-        router.push('/auth/signin');
-        return;
-    }
-
-    if (!event) return;
-    
-    // Redirect to the new dedicated checkout page
-    // We will enhance this later to select a specific tier
-    router.push(`/checkout/${event.id}`);
-  };
 
   if (loading || authLoading) {
     return (
@@ -135,17 +118,11 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
                     <span>{event.location}</span>
                 </div>
             </div>
-             <div className="mt-8 flex items-center justify-between bg-muted/50 p-6 rounded-lg">
-                <div>
-                    <p className="text-sm text-muted-foreground">Starting from</p>
-                    <p className="text-3xl font-bold text-primary">
-                        {lowestPrice > 0 ? `₦${lowestPrice.toLocaleString()}` : 'Free'}
-                    </p>
-                </div>
-                <Button size="lg" className="flex items-center gap-2" onClick={handleGetTicket} disabled={authLoading || !user || isEventInThePast}>
-                    <Ticket className="h-5 w-5"/>
-                    {isEventInThePast ? "Event has passed" : "Get Tickets"}
-                </Button>
+             <div className="mt-8 bg-muted/50 p-6 rounded-lg">
+                <p className="text-sm text-muted-foreground">Tickets starting from</p>
+                <p className="text-3xl font-bold text-primary">
+                    {lowestPrice > 0 ? `₦${lowestPrice.toLocaleString()}` : 'Free'}
+                </p>
             </div>
             {!user && !authLoading && (
                 <p className="text-center text-sm text-muted-foreground mt-4">
@@ -166,14 +143,24 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
                     <h2 className="text-3xl font-bold font-headline mb-4 border-b pb-2">Tickets</h2>
                      <div className="space-y-4">
                         {event.ticketTiers.map(tier => (
-                            <div key={tier.name} className="p-4 border rounded-lg bg-card">
-                                <div className="flex justify-between items-center">
+                            <div key={tier.name} className="p-4 border rounded-lg bg-card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                <div>
                                     <h3 className="font-bold text-lg">{tier.name}</h3>
                                     <p className="font-bold text-primary">
                                         {tier.price > 0 ? `₦${tier.price.toLocaleString()}` : 'Free'}
                                     </p>
+                                    {tier.description && <p className="text-sm text-muted-foreground mt-1">{tier.description}</p>}
                                 </div>
-                                {tier.description && <p className="text-sm text-muted-foreground mt-1">{tier.description}</p>}
+                                 <Button 
+                                    asChild
+                                    disabled={authLoading || !user || isEventInThePast}
+                                    className="shrink-0"
+                                >
+                                    <Link href={`/checkout/${event.id}?tier=${encodeURIComponent(tier.name)}`}>
+                                        <Ticket className="mr-2 h-4 w-4" />
+                                        {isEventInThePast ? "Event Passed" : "Get Ticket"}
+                                    </Link>
+                                </Button>
                             </div>
                         ))}
                     </div>
