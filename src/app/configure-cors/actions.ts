@@ -14,7 +14,8 @@ export async function applyCorsConfiguration(): Promise<{success: boolean; messa
         }
         
         const storage = admin.storage();
-        const bucket = storage.bucket(); // Gets the default bucket
+        // Explicitly specify the bucket name to fix the error.
+        const bucket = storage.bucket("e-ventless-4mfqq.appspot.com"); 
 
         const corsConfiguration = [
             {
