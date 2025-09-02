@@ -25,7 +25,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Info, Calendar as CalendarIcon, Upload, Loader2, Trash2, PlusCircle, Image as ImageIcon } from "lucide-react";
+import { Info, Calendar as CalendarIcon, Loader2, Trash2, PlusCircle } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -60,10 +60,10 @@ const formSchema = z.object({
   time: z.string().min(1, "Time is required (e.g., 9:00 AM)."),
   poster: z
     .any()
-    .refine((file) => file, "Event poster is required.")
-    .refine((file) => file?.size <= MAX_FILE_SIZE, `Max image size is 5MB.`)
+    .refine((files) => files?.[0], "Event poster is required.")
+    .refine((files) => files?.[0]?.size <= MAX_FILE_SIZE, `Max image size is 5MB.`)
     .refine(
-      (file) => ACCEPTED_IMAGE_TYPES.includes(file?.type),
+      (files) => ACCEPTED_IMAGE_TYPES.includes(files?.[0]?.type),
       "Only .jpg, .jpeg, .png and .webp formats are supported."
     ),
   ticketTiers: z.array(ticketTierSchema).min(1, "You must add at least one ticket tier."),
@@ -107,12 +107,12 @@ export default function CreateEventPage() {
 
     try {
         // 1. Upload image to Firebase Storage
-        const imageFile = values.poster;
-        const fileExtension = imageFile.name.split('.').pop();
-        const posterFileName = `poster-${Date.now()}.${fileExtension}`;
-        const storageRef = ref(storage, `event-posters/${posterFileName}`);
-        await uploadBytes(storageRef, imageFile);
-        const imageUrl = await getDownloadURL(storageRef);
+        const imageFile = values.poster[0];
+        const filePath = `event-posters/${Date.now()}_${imageFile.name}`;
+        const storageRef = ref(storage, filePath);
+        
+        const uploadResult = await uploadBytes(storageRef, imageFile);
+        const imageUrl = await getDownloadURL(uploadResult.ref);
 
         
         const newEventData = {
@@ -131,14 +131,13 @@ export default function CreateEventPage() {
         };
 
         // 2. Create the main event document in Firestore
-        const eventRef = await addDoc(collection(firestore, "events"), newEventData);
+        const eventDocRef = await addDoc(collection(firestore, "events"), newEventData);
 
         // 3. Create a batch to add all ticket tiers
         const batch = writeBatch(firestore);
         values.ticketTiers.forEach(tier => {
-            const tierWithNumericPrice = { ...tier, price: Number(tier.price) };
-            const tierRef = doc(collection(firestore, `events/${eventRef.id}/ticketTiers`));
-            batch.set(tierRef, tierWithNumericPrice);
+            const tierRef = doc(collection(firestore, `events/${eventDocRef.id}/ticketTiers`));
+            batch.set(tierRef, tier);
         });
         await batch.commit();
 
@@ -148,7 +147,7 @@ export default function CreateEventPage() {
         });
         
         form.reset();
-        router.push(`/events/${eventRef.id}`);
+        router.push(`/events/${eventDocRef.id}`);
 
     } catch (error: any) {
          toast({
@@ -261,22 +260,23 @@ export default function CreateEventPage() {
                 <FormField
                   control={form.control}
                   name="poster"
-                  render={({ field }) => (
+                  render={({ field: { onChange, value, ...rest } }) => (
                     <FormItem>
                       <FormLabel>Event Poster</FormLabel>
                       <FormControl>
                         <Input
                           type="file"
+                          {...rest}
                           accept="image/png, image/jpeg, image/webp"
                           onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            field.onChange(file);
-                            if (file) {
+                            const files = e.target.files;
+                            onChange(files);
+                            if (files && files[0]) {
                               const reader = new FileReader();
                               reader.onloadend = () => {
                                 setImagePreview(reader.result as string);
                               };
-                              reader.readAsDataURL(file);
+                              reader.readAsDataURL(files[0]);
                             } else {
                               setImagePreview(null);
                             }
@@ -489,4 +489,5 @@ export default function CreateEventPage() {
       </Form>
     </div>
   );
-}
+
+    
