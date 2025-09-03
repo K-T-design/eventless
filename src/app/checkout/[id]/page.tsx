@@ -28,6 +28,7 @@ import {
   serverTimestamp,
   getDocs as getSubDocs,
   query,
+  Timestamp,
 } from "firebase/firestore";
 import type { Event, Ticket, Transaction, TicketTier } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -126,7 +127,7 @@ function CheckoutContent({ params }: { params: { id: string } }) {
         tier: selectedTier, // Save the selected tier
         eventDetails: {
           title: event.title,
-          date: event.date,
+          date: Timestamp.fromDate(event.date),
           location: event.location,
         },
       } as Omit<Ticket, 'id'>);
