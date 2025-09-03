@@ -1,4 +1,3 @@
-
 import { Timestamp } from "firebase/firestore";
 
 export type TicketTier = {
@@ -84,5 +83,5 @@ export type Transaction = {
     paymentGateway: 'paystack' | 'free' | 'other';
     transactionDate: Timestamp;
     // Paystack specific reference
-    reference?: string;
+    reference: string;
 }

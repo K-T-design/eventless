@@ -23,14 +23,11 @@ import { auth, firestore } from "@/lib/firebase";
 import {
   doc,
   getDoc,
-  addDoc,
   collection,
-  serverTimestamp,
   getDocs as getSubDocs,
   query,
-  Timestamp,
 } from "firebase/firestore";
-import type { Event, Ticket, Transaction, TicketTier } from "@/types";
+import type { Event, TicketTier } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -38,6 +35,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { PaystackButton } from "react-paystack";
+import { verifyPaymentAndCreateTicket } from "./actions";
 
 const SERVICE_FEE = 150;
 
@@ -51,6 +50,13 @@ function CheckoutContent({ params }: { params: { id: string } }) {
   const { toast } = useToast();
 
   const [selectedTier, setSelectedTier] = useState<TicketTier | null>(null);
+  const [paystackPublicKey, setPaystackPublicKey] = useState("");
+
+  useEffect(() => {
+    // This is a bit of a workaround to get client-side env vars in Next.js App Router
+    // In a larger app, this might be in a context or a dedicated config file.
+    setPaystackPublicKey(process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "pk_test_0d452a612f7ca54cf0d6e04671b981faaed5c3ac");
+  }, []);
 
   useEffect(() => {
     if (params.id) {
@@ -112,59 +118,56 @@ function CheckoutContent({ params }: { params: { id: string } }) {
     }
   }, [params.id, router, toast, searchParams]);
 
-  const handlePurchase = async () => {
+  const handlePaystackSuccess = async (response: { reference: string }) => {
     if (!user || !event || !selectedTier) return;
-
     setProcessing(true);
+
     try {
-      // 1. Create Ticket Document
-      const ticketRef = await addDoc(collection(firestore, "tickets"), {
+      const result = await verifyPaymentAndCreateTicket({
+        reference: response.reference,
         eventId: event.id,
         userId: user.uid,
-        purchaseDate: serverTimestamp(),
-        status: "valid",
-        qrCodeData: `eventless-ticket:${Date.now()}:${user.uid}`, // Make it more unique
-        tier: selectedTier, // Save the selected tier
-        eventDetails: {
-          title: event.title,
-          date: Timestamp.fromDate(event.date),
-          location: event.location,
-        },
-      } as Omit<Ticket, 'id'>);
-
-      // 2. Create Transaction Document
-      const finalAmount = selectedTier.price > 0 ? selectedTier.price + SERVICE_FEE : 0;
-      await addDoc(collection(firestore, "transactions"), {
-        userId: user.uid,
-        ticketId: ticketRef.id,
-        amount: finalAmount,
-        status: "succeeded",
-        paymentGateway: selectedTier.price > 0 ? "paystack" : "free", // Placeholder
-        transactionDate: serverTimestamp(),
-        reference: `evt-${Date.now()}`,
-      } as Omit<Transaction, 'id'>);
-
-      toast({
-        title: "Success!",
-        description: "Your ticket has been secured.",
+        tier: selectedTier,
       });
 
-      router.push("/my-tickets");
-
+      if (result.success) {
+        toast({
+          title: "Success!",
+          description: "Your ticket has been secured.",
+        });
+        router.push("/my-tickets");
+      } else {
+        throw new Error(result.message || "Payment verification failed.");
+      }
     } catch (error: any) {
-      console.error("Error creating ticket:", error);
+      console.error("Error processing purchase:", error);
       toast({
         variant: "destructive",
         title: "Purchase Failed",
-        description: "Something went wrong. Please try again.",
+        description: error.message || "Something went wrong. Please contact support.",
       });
     } finally {
       setProcessing(false);
     }
   };
 
+  const handlePaystackClose = () => {
+    toast({
+      variant: "destructive",
+      title: "Checkout Closed",
+      description: "You closed the payment window without completing the purchase.",
+    });
+  };
+
   const ticketPrice = selectedTier?.price ?? 0;
   const totalPrice = ticketPrice > 0 ? ticketPrice + SERVICE_FEE : 0;
+  
+  const paystackConfig = {
+    reference: new Date().getTime().toString(),
+    email: user?.email || "",
+    amount: totalPrice * 100, // Paystack expects amount in kobo
+    publicKey: paystackPublicKey,
+  };
 
   if (loading || authLoading) {
     return (
@@ -277,30 +280,40 @@ function CheckoutContent({ params }: { params: { id: string } }) {
               </div>
             </div>
           </div>
-           <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Payment Gateway Notice</AlertTitle>
-            <AlertDescription>
-                This is a placeholder checkout. No real payment will be processed. Clicking "Confirm" will generate a real ticket.
-            </AlertDescription>
-           </Alert>
         </CardContent>
         <CardFooter>
-          <Button
-            size="lg"
-            className="w-full"
-            onClick={handlePurchase}
-            disabled={processing || authLoading || !user}
-          >
-            {processing ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <>
-                <TicketIcon className="mr-2" />
-                Confirm Purchase
-              </>
-            )}
-          </Button>
+          {totalPrice > 0 ? (
+            <PaystackButton
+              className="w-full"
+              {...paystackConfig}
+              text="Pay Now"
+              onSuccess={handlePaystackSuccess}
+              onClose={handlePaystackClose}
+            >
+              <Button size="lg" className="w-full" disabled={processing || authLoading || !user}>
+                {processing ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <>
+                    <TicketIcon className="mr-2" />
+                    Pay Now
+                  </>
+                )}
+              </Button>
+            </PaystackButton>
+          ) : (
+             <Button size="lg" className="w-full" onClick={() => handlePaystackSuccess({reference: `free-${new Date().getTime()}`})} disabled={processing}>
+                 {processing ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <>
+                    <TicketIcon className="mr-2" />
+                    Get Free Ticket
+                  </>
+                )}
+             </Button>
+          )}
+
         </CardFooter>
       </Card>
        {!user && !authLoading && (
