@@ -6,7 +6,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, query, where, onSnapshot, orderBy, Timestamp } from 'firebase/firestore';
 import { auth, firestore } from '@/lib/firebase';
 import type { Ticket } from '@/types';
-import { Calendar, MapPin, Ticket as TicketIcon, Dot } from 'lucide-react';
+import { Dot } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -16,11 +16,19 @@ import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { QRCodeCanvas } from 'qrcode.react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 export default function MyTicketsPage() {
   const [user, authLoading] = useAuthState(auth);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -153,7 +161,9 @@ export default function MyTicketsPage() {
                                 <span className="font-bold">₦{(ticket.tier.price).toLocaleString()}</span>
                             </div>
                         </div>
-                        <Button className="w-full mt-6" size="lg" disabled>Show Fullscreen</Button>
+                        <Button className="w-full mt-6" size="lg" onClick={() => setSelectedTicket(ticket)}>
+                            Show Fullscreen
+                        </Button>
                     </div>
                  </AccordionContent>
             </AccordionItem>
@@ -161,13 +171,32 @@ export default function MyTicketsPage() {
         </Accordion>
       ) : (
         <div className="text-center py-16 border-2 border-dashed rounded-lg">
-            <TicketIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-xl font-semibold mb-2">No Tickets Yet</h3>
             <p className="text-muted-foreground mb-6">You haven't acquired any tickets. Find an event to attend!</p>
             <Button asChild>
                 <Link href="/discover">Discover Events</Link>
             </Button>
         </div>
+      )}
+
+      {selectedTicket && (
+        <Dialog open={!!selectedTicket} onOpenChange={(isOpen) => !isOpen && setSelectedTicket(null)}>
+            <DialogContent className="max-w-xs sm:max-w-sm rounded-lg">
+                <DialogHeader className="text-center">
+                    <DialogTitle className="font-headline text-2xl">{selectedTicket.eventDetails?.title}</DialogTitle>
+                    <DialogDescription>
+                        Present this QR code at the event entrance for scanning.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="p-4 bg-white rounded-lg my-4 flex justify-center">
+                    <QRCodeCanvas value={selectedTicket.qrCodeData} size={256} />
+                </div>
+                <div className="text-center text-sm text-muted-foreground">
+                    <p>{selectedTicket.tier.name} Ticket</p>
+                    <p>Status: <span className="font-bold capitalize">{selectedTicket.status}</span></p>
+                </div>
+            </DialogContent>
+        </Dialog>
       )}
     </div>
   );
