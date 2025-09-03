@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, Timestamp } from 'firebase/firestore';
 import { auth, firestore } from '@/lib/firebase';
 import type { Ticket } from '@/types';
 import { Loader2, QrCode, Calendar, MapPin, Ticket as TicketIcon } from 'lucide-react';
@@ -12,50 +12,60 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 
 export default function MyTicketsPage() {
   const [user, authLoading] = useAuthState(auth);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
-    const fetchTickets = async () => {
-      if (!user) {
-        setLoading(false);
-        return;
-      };
-      
-      setLoading(true);
-      try {
-        const ticketsRef = collection(firestore, 'tickets');
-        const q = query(ticketsRef, where('userId', '==', user.uid), orderBy('purchaseDate', 'desc'));
-        const querySnapshot = await getDocs(q);
-        const ticketsList = querySnapshot.docs.map(doc => {
-            const data = doc.data();
-            // Firestore Timestamps need to be converted to JS Dates for use in components
-            return { 
-              id: doc.id, 
-              ...data,
-              // Explicitly convert Timestamps to Dates for client-side use
-              purchaseDate: (data.purchaseDate as Timestamp).toDate(),
-              eventDetails: data.eventDetails ? {
-                ...data.eventDetails,
-                date: (data.eventDetails.date as Timestamp).toDate(),
-              } : undefined,
-            } as Ticket;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    const ticketsRef = collection(firestore, 'tickets');
+    const q = query(
+      ticketsRef, 
+      where('userId', '==', user.uid), 
+      orderBy('purchaseDate', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const ticketsList = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            purchaseDate: (data.purchaseDate as Timestamp).toDate(),
+            eventDetails: data.eventDetails ? {
+              ...data.eventDetails,
+              date: (data.eventDetails.date as Timestamp).toDate(),
+            } : undefined,
+          } as Ticket;
         });
         setTickets(ticketsList);
-      } catch (error) {
+        setLoading(false);
+      },
+      (error) => {
         console.error("Error fetching tickets: ", error);
-      } finally {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Could not fetch your tickets. Please try again later.",
+        });
         setLoading(false);
       }
-    };
+    );
 
-    if (!authLoading) {
-        fetchTickets();
-    }
-  }, [user, authLoading]);
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, [user, toast]);
   
   if (authLoading || loading) {
     return (
@@ -70,7 +80,7 @@ export default function MyTicketsPage() {
     )
   }
 
-  if (!user) {
+  if (!user && !authLoading) {
     return (
       <div className="container mx-auto max-w-lg py-12 px-4 text-center">
         <Card>
