@@ -35,7 +35,13 @@ export default function MyTicketsPage() {
             // Firestore Timestamps need to be converted to JS Dates for use in components
             return { 
               id: doc.id, 
-              ...data 
+              ...data,
+              // Explicitly convert Timestamps to Dates for client-side use
+              purchaseDate: (data.purchaseDate as Timestamp),
+              eventDetails: data.eventDetails ? {
+                ...data.eventDetails,
+                date: (data.eventDetails.date as Timestamp),
+              } : undefined,
             } as Ticket;
         });
         setTickets(ticketsList);
