@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -53,7 +52,7 @@ export default function FinancialsPage() {
             <CardHeader>
                 <CardTitle>Revenue Overview</CardTitle>
                 <CardDescription>A chart showing revenue from ₦150 service fees over the last 6 months.</CardDescription>
-            </Header>
+            </CardHeader>
             <CardContent>
                  {loading ? (
                     <div className="flex items-center justify-center min-h-[300px]">
@@ -92,7 +91,7 @@ export default function FinancialsPage() {
             <CardHeader>
                 <CardTitle>Pending Payouts</CardTitle>
                 <CardDescription>A list of organizers with a balance owed. Payouts are handled manually for now.</CardDescription>
-            </Header>
+            </CardHeader>
             <CardContent>
                 <div className="text-center py-12 border-2 border-dashed rounded-lg bg-card">
                     <p className="text-muted-foreground">Payouts management will be shown here.</p>
@@ -102,4 +101,3 @@ export default function FinancialsPage() {
       </div>
     </>
   );
-}
