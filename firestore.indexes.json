@@ -14,6 +14,20 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "tickets",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "eventDetails.organizerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tier.price",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []
