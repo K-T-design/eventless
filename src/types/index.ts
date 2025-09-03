@@ -70,7 +70,7 @@ export type Ticket = {
     tier: TicketTier;
     eventDetails?: { // Denormalized data for easier display
         title: string;
-        date: Date;
+        date: Timestamp;
         location: string;
     }
 }

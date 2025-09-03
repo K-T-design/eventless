@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
 import { auth, firestore } from '@/lib/firebase';
 import type { Ticket } from '@/types';
 import { Loader2, QrCode, Calendar, MapPin, Ticket as TicketIcon } from 'lucide-react';
@@ -32,14 +32,11 @@ export default function MyTicketsPage() {
         const querySnapshot = await getDocs(q);
         const ticketsList = querySnapshot.docs.map(doc => {
             const data = doc.data();
-            // Ensure date is converted from Firestore Timestamp
-            if (data.eventDetails && data.eventDetails.date) {
-                data.eventDetails.date = data.eventDetails.date.toDate();
-            }
-             if (data.purchaseDate) {
-                data.purchaseDate = data.purchaseDate.toDate();
-            }
-            return { id: doc.id, ...data } as Ticket
+            // Firestore Timestamps need to be converted to JS Dates for use in components
+            return { 
+              id: doc.id, 
+              ...data 
+            } as Ticket;
         });
         setTickets(ticketsList);
       } catch (error) {
@@ -107,7 +104,7 @@ export default function MyTicketsPage() {
               <CardContent className="flex-grow space-y-3">
                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <Calendar className="h-4 w-4" />
-                    <span>{ticket.eventDetails?.date ? format(ticket.eventDetails.date, 'PPP') : 'Date'}</span>
+                    <span>{ticket.eventDetails?.date ? format(ticket.eventDetails.date.toDate(), 'PPP') : 'Date'}</span>
                 </div>
                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <MapPin className="h-4 w-4" />
