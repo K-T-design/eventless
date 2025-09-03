@@ -37,10 +37,10 @@ export default function MyTicketsPage() {
               id: doc.id, 
               ...data,
               // Explicitly convert Timestamps to Dates for client-side use
-              purchaseDate: (data.purchaseDate as Timestamp),
+              purchaseDate: (data.purchaseDate as Timestamp).toDate(),
               eventDetails: data.eventDetails ? {
                 ...data.eventDetails,
-                date: (data.eventDetails.date as Timestamp),
+                date: (data.eventDetails.date as Timestamp).toDate(),
               } : undefined,
             } as Ticket;
         });
@@ -110,7 +110,7 @@ export default function MyTicketsPage() {
               <CardContent className="flex-grow space-y-3">
                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <Calendar className="h-4 w-4" />
-                    <span>{ticket.eventDetails?.date ? format(ticket.eventDetails.date.toDate(), 'PPP') : 'Date'}</span>
+                    <span>{ticket.eventDetails?.date ? format(ticket.eventDetails.date, 'PPP') : 'Date'}</span>
                 </div>
                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <MapPin className="h-4 w-4" />

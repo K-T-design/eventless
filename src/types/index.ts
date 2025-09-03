@@ -63,13 +63,13 @@ export type Ticket = {
     id: string;
     eventId: string;
     userId: string;
-    purchaseDate: Timestamp;
+    purchaseDate: Date; // Changed to Date for client-side ease-of-use
     status: 'valid' | 'used';
     qrCodeData: string; // The raw data for the QR code
     tier: TicketTier;
     eventDetails?: { // Denormalized data for easier display
         title: string;
-        date: Timestamp;
+        date: Date; // Changed to Date
         location: string;
     }
 }
