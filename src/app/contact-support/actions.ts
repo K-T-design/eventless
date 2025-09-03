@@ -2,8 +2,7 @@
 'use server';
 
 import { collection, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
-import { firestore, auth } from '@/lib/firebase';
-import { getCurrentUser } from '@/lib/auth';
+import { firestore } from '@/lib/firebase';
 import type { UserProfile, SupportTicket } from "@/types";
 
 type CreateTicketInput = {
@@ -12,15 +11,14 @@ type CreateTicketInput = {
   category: SupportTicket['category'];
 }
 
-export async function createSupportTicket(input: CreateTicketInput): Promise<{ success: boolean, message?: string }> {
+export async function createSupportTicket(input: CreateTicketInput, userId: string): Promise<{ success: boolean, message?: string }> {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
+    if (!userId) {
       throw new Error("You must be logged in to create a ticket.");
     }
     
     // We need the user's name from their profile
-    const userRef = doc(firestore, "users", user.uid);
+    const userRef = doc(firestore, "users", userId);
     const userSnap = await getDoc(userRef);
 
     if (!userSnap.exists()) {
@@ -31,7 +29,7 @@ export async function createSupportTicket(input: CreateTicketInput): Promise<{ s
 
     const newTicket = {
         ...input,
-        userId: user.uid,
+        userId: userId,
         userEmail: userProfile.basicInfo.email,
         userName: userProfile.basicInfo.name,
         status: 'open',
