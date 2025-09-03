@@ -42,7 +42,6 @@ const SERVICE_FEE = 150;
 
 function CheckoutContent({ params }: { params: { id: string } }) {
   const [event, setEvent] = useState<Event | null>(null);
-  const [ticketTiers, setTicketTiers] = useState<TicketTier[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [user, authLoading] = useAuthState(auth);
@@ -84,8 +83,7 @@ function CheckoutContent({ params }: { params: { id: string } }) {
           const tiersQuery = query(collection(eventDocRef, "ticketTiers"));
           const tiersSnapshot = await getSubDocs(tiersQuery);
           const fetchedTiers = tiersSnapshot.docs.map(doc => doc.data() as TicketTier);
-          setTicketTiers(fetchedTiers);
-
+          
           const tier = fetchedTiers.find(t => t.name === tierName);
           if (tier) {
             setSelectedTier(tier);
@@ -316,7 +314,7 @@ function CheckoutContent({ params }: { params: { id: string } }) {
 
 export default function CheckoutPage({ params }: { params: { id: string } }) {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
       <CheckoutContent params={params} />
     </Suspense>
   )
