@@ -26,6 +26,7 @@ import {
   collection,
   getDocs as getSubDocs,
   query,
+  Timestamp,
 } from "firebase/firestore";
 import type { Event, TicketTier } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -53,8 +54,6 @@ function CheckoutContent({ params }: { params: { id: string } }) {
   const [paystackPublicKey, setPaystackPublicKey] = useState("");
 
   useEffect(() => {
-    // This is a bit of a workaround to get client-side env vars in Next.js App Router
-    // In a larger app, this might be in a context or a dedicated config file.
     setPaystackPublicKey(process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "");
   }, []);
 
@@ -83,7 +82,7 @@ function CheckoutContent({ params }: { params: { id: string } }) {
           const fetchedEvent = {
             id: eventDocSnap.id,
             ...data,
-            date: data.date.toDate(),
+            date: (data.date as Timestamp).toDate(),
           } as Event;
           setEvent(fetchedEvent);
           
@@ -338,5 +337,3 @@ export default function CheckoutPage({ params }: { params: { id:string } }) {
     </Suspense>
   )
 }
-
-    
