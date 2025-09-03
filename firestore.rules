@@ -1,49 +1,45 @@
 
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
-    }
-    
-    // Users Collection
-    // - A user can read their own profile.
-    // - A user can create their own profile.
-    // - A user can only update their own profile, but cannot change their userType.
     match /users/{userId} {
-      allow read, update: if isOwner(userId) && !('userType' in request.resource.data.basicInfo);
-      allow create: if isOwner(userId);
+      allow read: if request.auth.uid == userId;
+      allow create: if request.auth.uid == userId;
+      // Prevent users from changing their own userType after creation
+      allow update: if request.auth.uid == userId && request.resource.data.basicInfo.userType == resource.data.basicInfo.userType;
     }
     
-    // Events Collection
-    // - Anyone can read approved events.
-    // - Logged-in users can create events, setting themselves as the organizer.
     match /events/{eventId} {
-       allow read: if resource.data.status == 'approved';
-       allow create: if request.auth != null && request.resource.data.organizerId == request.auth.uid;
-       
-       // Ticket Tiers Subcollection
-       // - Anyone can read ticket tiers for an approved event.
-       match /ticketTiers/{tierId} {
-         allow read: if get(/databases/$(database)/documents/events/$(eventId)).data.status == 'approved';
-       }
+      allow read: if true;
+      // Ensure the organizerId on a new event matches the creator's UID
+      allow create: if request.auth.uid != null && request.auth.uid == request.resource.data.organizerId;
+      // TODO: Add update rule to check organizerId
     }
 
-    // Tickets Collection
-    // - A user can only read their own ticket.
-    // - A user can query for the list of their own tickets.
-    match /tickets/{ticketId} {
-      allow read: if isOwner(resource.data.userId);
-      allow list: if isOwner(request.query.userId); // Fix: Allows querying by user ID
+    match /events/{eventId}/ticketTiers/{tierId} {
+      allow read: if true;
+      allow list: if true;
     }
-    
-    // Transactions Collection
-    // - No one should read transactions from the client-side.
-    // - This is handled by server-side logic (Cloud Functions / Server Actions).
-     match /transactions/{transactionId} {
-      allow read, write: if false;
+
+    match /tickets/{ticketId} {
+      // Allow reading a single ticket if you are the owner
+      allow get: if request.auth.uid == resource.data.userId;
+      
+      // Allow listing tickets ONLY if the query filters by the user's own UID
+      allow list: if request.auth.uid != null && request.query.where.userId == request.auth.uid;
+
+      // Allow creating a ticket if the userId on the ticket matches your own UID
+      allow create: if request.auth.uid == request.resource.data.userId;
+
+      // Allow updating a ticket (e.g. for check-in)
+      // TODO: Restrict this to event organizers
+      allow update: if request.auth.uid != null;
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if request.auth.uid == resource.data.userId;
+      allow create: if request.auth.uid == request.resource.data.userId;
     }
   }
 }
