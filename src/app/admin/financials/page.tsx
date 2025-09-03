@@ -53,7 +53,7 @@ export default function FinancialsPage() {
             <CardHeader>
                 <CardTitle>Revenue Overview</CardTitle>
                 <CardDescription>A chart showing revenue from ₦150 service fees over the last 6 months.</CardDescription>
-            </CardHeader>
+            </Header>
             <CardContent>
                  {loading ? (
                     <div className="flex items-center justify-center min-h-[300px]">
@@ -66,7 +66,7 @@ export default function FinancialsPage() {
                     </Alert>
                  ) : (
                     <ChartContainer config={chartConfig} className="min-h-[300px] w-full">
-                        <BarChart accessibilityLayer data={chartData}>
+                        <BarChart data={chartData}>
                             <CartesianGrid vertical={false} />
                             <XAxis
                               dataKey="month"
