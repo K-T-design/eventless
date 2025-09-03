@@ -27,12 +27,14 @@ const getPriceDisplay = (tiers: Event['ticketTiers']) => {
 
     const prices = tiers.map(t => t.price).sort((a, b) => a - b);
     const minPrice = prices[0];
-
-    if (minPrice > 0) {
-        return `From ₦${minPrice.toLocaleString()}`;
+    
+    // If there's any free tier, we can label the whole event as having a free option.
+    if (minPrice === 0) {
+        return "Free";
     }
 
-    return "Free";
+    // Otherwise, show the lowest price for paid tickets.
+    return `From ₦${minPrice.toLocaleString()}`;
 }
 
 
