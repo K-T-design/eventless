@@ -36,6 +36,7 @@ import { auth, firestore } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp, writeBatch, doc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { EVENT_CATEGORIES } from "@/lib/categories";
+import { NIGERIAN_UNIVERSITIES } from "@/lib/universities";
 
 const ticketTierSchema = z.object({
   name: z.string().min(1, "Tier name is required."),
@@ -52,7 +53,6 @@ const formSchema = z.object({
   location: z.string().min(3, "Location is required."),
   date: z.date({ required_error: "A date for the event is required." }),
   time: z.string().min(1, "Time is required (e.g., 9:00 AM)."),
-  // Reverted: poster is no longer a required file upload
   poster: z.string().optional(),
   ticketTiers: z.array(ticketTierSchema).min(1, "You must add at least one ticket tier."),
 });
@@ -104,19 +104,14 @@ export default function CreateEventPage() {
             organizerId: user.uid,
             status: 'pending' as const,
             createdAt: serverTimestamp(),
-            // Reverted to placeholder imageUrl
             imageUrl: "https://picsum.photos/1200/600",
             imageHint: "event poster placeholder",
         };
 
-        // Create the main event document in Firestore
         const eventDocRef = await addDoc(collection(firestore, "events"), newEventData);
 
-        // Create a batch to add all ticket tiers
         const batch = writeBatch(firestore);
         values.ticketTiers.forEach(tier => {
-            // Note: The original code had a bug here, it was not creating a proper subcollection reference.
-            // Correcting it as part of the rollback to ensure functionality.
             const tierRef = doc(collection(firestore, `events/${eventDocRef.id}/ticketTiers`));
             batch.set(tierRef, tier);
         });
@@ -141,7 +136,6 @@ export default function CreateEventPage() {
     }
   }
   
-  // Mock user type and event count - we will replace this later
   const userType = "Individual";
   const eventsCreated = 2;
   const eventLimit = userType === "Individual" ? 5 : 8;
@@ -187,7 +181,6 @@ export default function CreateEventPage() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            {/* Section 1: Core Details */}
             <div className="space-y-6 p-6 border rounded-lg">
                 <h2 className="text-xl font-bold font-headline">Core Details</h2>
                  <FormField
@@ -249,8 +242,6 @@ export default function CreateEventPage() {
                 </FormItem>
             </div>
 
-
-            {/* Section 2: Date, Time & Location */}
             <div className="space-y-6 p-6 border rounded-lg">
                 <h2 className="text-xl font-bold font-headline">Date, Time & Location</h2>
                  <FormField
@@ -266,11 +257,9 @@ export default function CreateEventPage() {
                             </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                            <SelectItem value="University of Lagos">University of Lagos</SelectItem>
-                            <SelectItem value="University of Ibadan">University of Ibadan</SelectItem>
-                            <SelectItem value="Covenant University">Covenant University</SelectItem>
-                            <SelectItem value="Obafemi Awolowo University">Obafemi Awolowo University</SelectItem>
-                            <SelectItem value="University of Nigeria, Nsukka">University of Nigeria, Nsukka</SelectItem>
+                            {NIGERIAN_UNIVERSITIES.map(uni => (
+                                <SelectItem key={uni} value={uni}>{uni}</SelectItem>
+                            ))}
                             </SelectContent>
                         </Select>
                         <FormMessage />
@@ -348,7 +337,6 @@ export default function CreateEventPage() {
                     />
             </div>
             
-            {/* Section 3: Ticket Configuration */}
             <div className="space-y-6 p-6 border rounded-lg">
                 <div className="flex justify-between items-center">
                     <h2 className="text-xl font-bold font-headline">Ticket Configuration</h2>
@@ -439,5 +427,4 @@ export default function CreateEventPage() {
       </Form>
     </div>
   );
-
-    
+}

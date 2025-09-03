@@ -16,6 +16,7 @@ import { firestore } from "@/lib/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EVENT_CATEGORIES } from "@/lib/categories";
+import { NIGERIAN_UNIVERSITIES } from "@/lib/universities";
 
 export default function DiscoverPage() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -28,7 +29,6 @@ export default function DiscoverPage() {
     const fetchEvents = async () => {
       setLoading(true);
       try {
-        // Only fetch events that have been approved
         const eventsRef = collection(firestore, "events");
         const q = query(eventsRef, where("status", "==", "approved"));
         const eventSnapshot = await getDocs(q);
@@ -37,7 +37,7 @@ export default function DiscoverPage() {
           return {
             id: doc.id,
             ...data,
-            date: data.date.toDate(), // Convert Firestore Timestamp to Date
+            date: data.date.toDate(),
           } as Event;
         });
         setEvents(eventsList);
@@ -64,7 +64,11 @@ export default function DiscoverPage() {
       );
   }, [events, searchTerm, selectedUniversity, selectedCategory]);
   
-  const universities = useMemo(() => [...new Set(events.map(event => event.university))], [events]);
+  const universities = useMemo(() => {
+    const uniqueUniversities = [...new Set(events.map(event => event.university))];
+    // We can use the larger static list if there are no events yet, or combine them
+    return uniqueUniversities.length > 0 ? uniqueUniversities.sort() : NIGERIAN_UNIVERSITIES.sort();
+  }, [events]);
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
