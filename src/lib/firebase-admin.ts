@@ -1,4 +1,5 @@
 
+import 'dotenv/config'; // Load environment variables
 import admin from 'firebase-admin';
 
 const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
@@ -11,9 +12,13 @@ function getFirebaseAdmin() {
         return admin.app();
     }
 
+    if (!serviceAccount) {
+         throw new Error('Firebase service account key is not defined. Please check your .env.local file.');
+    }
+
     try {
         return admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount!),
+            credential: admin.credential.cert(serviceAccount),
         });
     } catch (e) {
         console.error('Firebase Admin Initialization Error', e);
