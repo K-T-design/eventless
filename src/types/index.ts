@@ -1,3 +1,4 @@
+
 import { Timestamp } from "firebase/firestore";
 
 export type TicketTier = {
@@ -54,7 +55,7 @@ export interface UserProfile {
     };
     payouts: {
       balance: number;
-      status: 'pending' | 'paid' | 'none';
+      status: 'none' | 'pending' | 'paid';
       lastPayoutDate: Timestamp | null;
     }
   };
@@ -95,8 +96,8 @@ export type Transaction = {
 export type OrganizerPayout = {
   organizerId: string;
   organizerName: string;
-  ticketsSold: number; // This will now be harder to calculate, let's remove for now
-  totalRevenue: number;
+  payoutDue: number;
+  bankDetails: UserProfile['orgInfo']['bankDetails'];
 };
 
 export type SupportTicket = {
