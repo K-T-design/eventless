@@ -55,7 +55,7 @@ function CheckoutContent({ params }: { params: { id: string } }) {
   useEffect(() => {
     // This is a bit of a workaround to get client-side env vars in Next.js App Router
     // In a larger app, this might be in a context or a dedicated config file.
-    setPaystackPublicKey(process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "pk_test_0d452a612f7ca54cf0d6e04671b981faaed5c3ac");
+    setPaystackPublicKey(process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "");
   }, []);
 
   useEffect(() => {
@@ -118,13 +118,13 @@ function CheckoutContent({ params }: { params: { id: string } }) {
     }
   }, [params.id, router, toast, searchParams]);
 
-  const handlePaystackSuccess = async (response: { reference: string }) => {
+  const handlePurchase = async (reference: string) => {
     if (!user || !event || !selectedTier) return;
     setProcessing(true);
 
     try {
       const result = await verifyPaymentAndCreateTicket({
-        reference: response.reference,
+        reference: reference,
         eventId: event.id,
         userId: user.uid,
         tier: selectedTier,
@@ -133,7 +133,7 @@ function CheckoutContent({ params }: { params: { id: string } }) {
       if (result.success) {
         toast({
           title: "Success!",
-          description: "Your ticket has been secured.",
+          description: result.message || "Your ticket has been secured.",
         });
         router.push("/my-tickets");
       } else {
@@ -146,8 +146,7 @@ function CheckoutContent({ params }: { params: { id: string } }) {
         title: "Purchase Failed",
         description: error.message || "Something went wrong. Please contact support.",
       });
-    } finally {
-      setProcessing(false);
+       setProcessing(false);
     }
   };
 
@@ -287,12 +286,15 @@ function CheckoutContent({ params }: { params: { id: string } }) {
               className="w-full"
               {...paystackConfig}
               text="Pay Now"
-              onSuccess={handlePaystackSuccess}
+              onSuccess={(res) => handlePurchase(res.reference)}
               onClose={handlePaystackClose}
             >
               <Button size="lg" className="w-full" disabled={processing || authLoading || !user}>
                 {processing ? (
-                  <Loader2 className="animate-spin" />
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
                 ) : (
                   <>
                     <TicketIcon className="mr-2" />
@@ -302,9 +304,12 @@ function CheckoutContent({ params }: { params: { id: string } }) {
               </Button>
             </PaystackButton>
           ) : (
-             <Button size="lg" className="w-full" onClick={() => handlePaystackSuccess({reference: `free-${new Date().getTime()}`})} disabled={processing}>
+             <Button size="lg" className="w-full" onClick={() => handlePurchase(`free-${new Date().getTime()}`)} disabled={processing || authLoading || !user}>
                  {processing ? (
-                  <Loader2 className="animate-spin" />
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
                 ) : (
                   <>
                     <TicketIcon className="mr-2" />
@@ -326,10 +331,12 @@ function CheckoutContent({ params }: { params: { id: string } }) {
 }
 
 
-export default function CheckoutPage({ params }: { params: { id: string } }) {
+export default function CheckoutPage({ params }: { params: { id:string } }) {
   return (
     <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
       <CheckoutContent params={params} />
     </Suspense>
   )
 }
+
+    
