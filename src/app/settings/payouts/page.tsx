@@ -23,21 +23,32 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Loader2, ShieldAlert } from "lucide-react";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { auth, firestore } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import type { UserProfile } from "@/types";
+import { updatePayoutDetails } from "./actions";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import Link from "next/link";
 
 const formSchema = z.object({
-  accountName: z.string().min(3, "Account name seems too short."),
-  accountNumber: z.string().length(10, "Account number must be 10 digits."),
   bankName: z.string().min(1, "Please select a bank."),
+  accountNumber: z.string().length(10, "Account number must be 10 digits."),
+  accountName: z.string().min(3, "Account name seems too short."),
 });
+
+type PayoutFormValues = z.infer<typeof formSchema>;
 
 export default function PayoutsSettingsPage() {
   const [loading, setLoading] = useState(false);
-  
-  // In a real app, you would fetch the user's existing payout details here
-  // and use them as defaultValues.
-  const form = useForm<z.infer<typeof formSchema>>({
+  const [user, authLoading] = useAuthState(auth);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  const form = useForm<PayoutFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       accountName: "",
@@ -46,19 +57,79 @@ export default function PayoutsSettingsPage() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (user) {
+        setProfileLoading(true);
+        const userDocRef = doc(firestore, 'users', user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+          const profile = { id: userDocSnap.id, ...userDocSnap.data() } as UserProfile;
+          setUserProfile(profile);
+          // Set form defaults from fetched profile
+          if (profile.basicInfo.userType === 'organizer' && profile.orgInfo?.bankDetails) {
+            form.reset(profile.orgInfo.bankDetails);
+          }
+        }
+        setProfileLoading(false);
+      } else if (!authLoading) {
+        setProfileLoading(false);
+      }
+    };
+    fetchUserProfile();
+  }, [user, authLoading, form]);
+
+
+  async function onSubmit(values: PayoutFormValues) {
+    if (!user) {
+      toast({ variant: "destructive", title: "Not authenticated" });
+      return;
+    }
     setLoading(true);
-    // Here you would typically save these details to Firestore
-    console.log(values);
-    
-    // Simulate API call
-    setTimeout(() => {
-        toast({
-            title: "Details Saved!",
-            description: "Your payout information has been updated successfully.",
-        });
-        setLoading(false);
-    }, 1000);
+    const result = await updatePayoutDetails(user.uid, values);
+    if (result.success) {
+      toast({
+        title: "Details Saved!",
+        description: "Your payout information has been updated successfully.",
+      });
+    } else {
+       toast({
+        variant: "destructive",
+        title: "Error",
+        description: result.message,
+      });
+    }
+    setLoading(false);
+  }
+
+  if (authLoading || profileLoading) {
+    return (
+        <div className="space-y-8">
+            <div className="space-y-2">
+                <Skeleton className="h-6 w-1/4" />
+                <Skeleton className="h-4 w-3/4" />
+            </div>
+             <div className="space-y-6">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+            </div>
+            <Skeleton className="h-12 w-32" />
+        </div>
+    )
+  }
+  
+  if (userProfile?.basicInfo.userType !== 'organizer') {
+     return (
+        <Alert variant="default" className="bg-amber-50 border-amber-200 text-amber-900">
+            <ShieldAlert className="h-4 w-4 !text-amber-600" />
+            <AlertTitle>Payouts Not Applicable</AlertTitle>
+            <AlertDescription>
+                Payout settings are only available for organizers. To become an organizer, you can create a new account or contact support.
+                Your current account type is an <strong>{userProfile?.basicInfo.userType}</strong>.
+            </AlertDescription>
+        </Alert>
+     )
   }
 
   return (
