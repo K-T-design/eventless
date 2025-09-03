@@ -124,7 +124,7 @@ export default function FinancialsPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Organizer</TableHead>
-                        <TableHead>Tickets Sold</TableHead>
+                        <TableHead>Bank Details</TableHead>
                         <TableHead className="text-right">Payout Due</TableHead>
                         <TableHead className="text-right">Action</TableHead>
                       </TableRow>
@@ -133,8 +133,17 @@ export default function FinancialsPage() {
                       {payouts.map((payout) => (
                         <TableRow key={payout.organizerId}>
                           <TableCell className="font-medium">{payout.organizerName}</TableCell>
-                          <TableCell>{payout.ticketsSold}</TableCell>
-                          <TableCell className="text-right font-semibold">₦{payout.totalRevenue.toLocaleString()}</TableCell>
+                          <TableCell className="text-xs">
+                             {payout.bankDetails?.accountNumber ? (
+                                <>
+                                    <div>{payout.bankDetails.accountName}</div>
+                                    <div>{payout.bankDetails.bankName} - {payout.bankDetails.accountNumber}</div>
+                                </>
+                             ) : (
+                                <span className="text-muted-foreground">No bank details</span>
+                             )}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold">₦{payout.payoutDue.toLocaleString()}</TableCell>
                           <TableCell className="text-right">
                             <Button variant="outline" size="sm" disabled>
                               Mark as Paid

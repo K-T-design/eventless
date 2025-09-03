@@ -59,69 +59,68 @@ export async function verifyPaymentAndCreateTicket(
 
     // Step 2: Check if transaction already processed
     const transactionSnapshot = await firestore.collection('transactions').where('reference', '==', reference).limit(1).get();
-    if (!transactionSnapshot.empty) {
-        // This is tricky with multiple tickets. For now, we assume one transaction = one purchase, even if for multiple tickets.
-        // And we don't return a single ticketId anymore.
+    if (!transactionSnapshot.empty && !isFreeTicket) {
         return { success: true, message: "This transaction has already been processed."};
     }
 
 
-    // Step 3: Fetch Event details (denormalized for the ticket)
+    // Step 3: Fetch Event details & Organizer Ref
     const eventRef = firestore.collection('events').doc(eventId);
     const eventSnap = await eventRef.get();
     if (!eventSnap.exists) {
         throw new Error("Event not found.");
     }
     const eventData = eventSnap.data() as Event;
+    const organizerRef = firestore.collection('users').doc(eventData.organizerId);
 
     
-    // Step 4: Create Tickets and one Transaction doc in a batch
-    const batch = firestore.batch();
-    const ticketIds: string[] = [];
+    // Step 4: Create Tickets, Transaction and update organizer balance in a single transaction
+    await firestore.runTransaction(async (transaction) => {
+        const ticketIds: string[] = [];
+        const ticketRevenue = tier.price * quantity;
 
-    for (let i = 0; i < quantity; i++) {
-        const ticketRef = firestore.collection('tickets').doc();
-        const qrCodeData = `eventless-ticket:${ticketRef.id}`;
-        
-        const newTicket: Omit<Ticket, 'id'> = {
-            eventId: eventId,
+        for (let i = 0; i < quantity; i++) {
+            const ticketRef = firestore.collection('tickets').doc();
+            const qrCodeData = `eventless-ticket:${ticketRef.id}`;
+            
+            const newTicket: Omit<Ticket, 'id'> = {
+                eventId: eventId,
+                userId: userId,
+                purchaseDate: FieldValue.serverTimestamp() as Timestamp,
+                status: 'valid',
+                qrCodeData: qrCodeData,
+                tier: tier,
+                eventDetails: {
+                  title: eventData.title,
+                  date: eventData.date, // This is already a Firestore Timestamp from the source
+                  location: eventData.location,
+                  organizerId: eventData.organizerId,
+                },
+            };
+            transaction.set(ticketRef, newTicket);
+            ticketIds.push(ticketRef.id);
+        }
+
+        const transactionRef = firestore.collection('transactions').doc();
+        const newTransaction: Omit<Transaction, 'id'> = {
             userId: userId,
-            purchaseDate: FieldValue.serverTimestamp() as Timestamp,
-            status: 'valid',
-            qrCodeData: qrCodeData,
-            tier: tier,
-            eventDetails: {
-              title: eventData.title,
-              date: eventData.date, // This is already a Firestore Timestamp from the source
-              location: eventData.location,
-              organizerId: eventData.organizerId, // Denormalizing for payouts query
-            },
+            ticketId: ticketIds.join(','),
+            amount: transactionAmount,
+            status: 'succeeded',
+            paymentGateway: isFreeTicket ? 'free' : 'paystack',
+            transactionDate: FieldValue.serverTimestamp() as Timestamp,
+            reference: isFreeTicket ? `free-${ticketIds[0]}` : reference,
         };
-        batch.set(ticketRef, newTicket);
-        ticketIds.push(ticketRef.id);
-    }
-
-
-    const transactionRef = firestore.collection('transactions').doc();
-    const newTransaction: Omit<Transaction, 'id'> = {
-        userId: userId,
-        ticketId: ticketIds.join(','), // Store multiple ticket IDs
-        amount: transactionAmount,
-        status: 'succeeded',
-        paymentGateway: isFreeTicket ? 'free' : 'paystack',
-        transactionDate: FieldValue.serverTimestamp() as Timestamp,
-        reference: reference,
-    };
-    batch.set(transactionRef, newTransaction);
-
-    // Step 5: Update the ticket tier quantity
-    const tierRef = firestore.collection('events').doc(eventId).collection('ticketTiers').doc(tier.name);
-    // This part is tricky as there isn't a direct way to get a doc by a field value in a subcollection without querying.
-    // Assuming tier.name is the document ID for simplicity. This needs to be ensured in creation.
-    // Let's assume for now the creation logic needs to be updated to use tier names as IDs.
-    // For this fix, let's focus on the organizerId. We will address ticket counts later if needed.
-    
-    await batch.commit();
+        transaction.set(transactionRef, newTransaction);
+        
+        // Update the organizer's balance if it's a paid ticket
+        if (ticketRevenue > 0) {
+            transaction.update(organizerRef, {
+                'orgInfo.payouts.balance': FieldValue.increment(ticketRevenue),
+                'orgInfo.payouts.status': 'pending'
+            });
+        }
+    });
 
     return { success: true, message: `Successfully created ${quantity} ticket(s)!` };
 

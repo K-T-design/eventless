@@ -88,6 +88,7 @@ export default function SignUpPage() {
 
       // 2. Create user document in Firestore
       const userDoc: UserProfile = {
+        id: user.uid,
         basicInfo: {
           email: values.email,
           name: values.fullName,
@@ -115,6 +116,11 @@ export default function SignUpPage() {
             accountNumber: "",
             bankName: "",
             accountName: "",
+          },
+          payouts: {
+            balance: 0,
+            status: 'none',
+            lastPayoutDate: null,
           }
         };
       }

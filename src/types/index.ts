@@ -52,6 +52,11 @@ export interface UserProfile {
       bankName: string;
       accountName: string;
     };
+    payouts: {
+      balance: number;
+      status: 'pending' | 'paid' | 'none';
+      lastPayoutDate: Timestamp | null;
+    }
   };
   metadata: {
     dateCreated: Date;
@@ -90,7 +95,7 @@ export type Transaction = {
 export type OrganizerPayout = {
   organizerId: string;
   organizerName: string;
-  ticketsSold: number;
+  ticketsSold: number; // This will now be harder to calculate, let's remove for now
   totalRevenue: number;
 };
 

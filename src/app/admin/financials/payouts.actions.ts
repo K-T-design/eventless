@@ -1,13 +1,13 @@
 'use server';
 
 import { firestore } from '@/lib/firebase-admin';
-import type { UserProfile, Ticket } from '@/types';
+import type { UserProfile } from '@/types';
 
 export type OrganizerPayout = {
   organizerId: string;
   organizerName: string;
-  ticketsSold: number;
-  totalRevenue: number;
+  payoutDue: number;
+  bankDetails: UserProfile['orgInfo']['bankDetails'];
 };
 
 export async function getPendingPayouts(): Promise<{
@@ -16,10 +16,13 @@ export async function getPendingPayouts(): Promise<{
   message?: string;
 }> {
   try {
-    const organizers: { id: string; name: string }[] = [];
+    const payouts: OrganizerPayout[] = [];
+    
+    // Simple query to get all organizers with a pending balance.
     const usersSnapshot = await firestore
       .collection('users')
       .where('basicInfo.userType', '==', 'organizer')
+      .where('orgInfo.payouts.balance', '>', 0)
       .get();
 
     if (usersSnapshot.empty) {
@@ -28,41 +31,17 @@ export async function getPendingPayouts(): Promise<{
 
     usersSnapshot.forEach((doc) => {
       const user = doc.data() as UserProfile;
-      organizers.push({
-        id: doc.id,
-        name: user.basicInfo.name,
-      });
+      if (user.orgInfo) {
+        payouts.push({
+            organizerId: doc.id,
+            organizerName: user.basicInfo.name,
+            payoutDue: user.orgInfo.payouts.balance,
+            bankDetails: user.orgInfo.bankDetails,
+        });
+      }
     });
     
-    const allPayouts: OrganizerPayout[] = [];
-
-    for (const org of organizers) {
-        const ticketsSnapshot = await firestore.collectionGroup('tickets')
-            .where('eventDetails.organizerId', '==', org.id)
-            .where('tier.price', '>', 0)
-            .get();
-
-        if (!ticketsSnapshot.empty) {
-            let totalRevenue = 0;
-            ticketsSnapshot.forEach(doc => {
-                const ticket = doc.data() as Ticket;
-                totalRevenue += ticket.tier.price;
-            });
-
-            if (totalRevenue > 0) {
-                 allPayouts.push({
-                    organizerId: org.id,
-                    organizerName: org.name,
-                    ticketsSold: ticketsSnapshot.size,
-                    totalRevenue: totalRevenue,
-                });
-            }
-        }
-    }
-    
-    // For now, we are not filtering out past payouts. This will show all-time revenue.
-    // A future implementation would involve a 'payouts' collection to track what has been paid.
-    return { success: true, data: allPayouts.sort((a,b) => b.totalRevenue - a.totalRevenue) };
+    return { success: true, data: payouts.sort((a,b) => b.payoutDue - a.payoutDue) };
   } catch (error: any) {
     console.error('Error fetching pending payouts: ', error);
     return {
@@ -71,8 +50,3 @@ export async function getPendingPayouts(): Promise<{
     };
   }
 }
-
-// Denormalize organizerId into eventDetails when creating tickets
-// This is a fix for the query above. We need to update the ticket creation logic.
-// Find the ticket creation action file and add it. It's in checkout/[id]/actions.ts
-
