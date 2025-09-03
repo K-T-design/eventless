@@ -2,9 +2,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, updateDoc, getDoc } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
-import type { Event } from "@/types";
+import type { Event, UserProfile } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -17,7 +17,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { Loader2, Calendar, MapPin, University, Clock } from "lucide-react";
+import { Loader2, Calendar, MapPin, University, Clock, User } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
@@ -28,11 +28,14 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import Image from "next/image";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+type EventWithOrganizer = Event & { organizer?: UserProfile['basicInfo'] };
 
 export default function ApprovalQueuePage() {
-  const [pendingEvents, setPendingEvents] = useState<Event[]>([]);
+  const [pendingEvents, setPendingEvents] = useState<EventWithOrganizer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<EventWithOrganizer | null>(null);
 
   const fetchPendingEvents = async () => {
     setLoading(true);
@@ -40,15 +43,30 @@ export default function ApprovalQueuePage() {
       const eventsCollection = collection(firestore, "events");
       const q = query(eventsCollection, where("status", "==", "pending"));
       const querySnapshot = await getDocs(q);
-      const eventsList = querySnapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          date: data.date.toDate(),
-          createdAt: data.createdAt.toDate(),
-        } as Event;
-      });
+      
+      const eventsList = await Promise.all(
+        querySnapshot.docs.map(async (docSnapshot) => {
+          const data = docSnapshot.data();
+          const event: Event = {
+            id: docSnapshot.id,
+            ...data,
+            date: data.date.toDate(),
+            createdAt: data.createdAt.toDate(),
+          } as Event;
+
+          let organizerInfo: UserProfile['basicInfo'] | undefined;
+          if (event.organizerId) {
+            const userRef = doc(firestore, 'users', event.organizerId);
+            const userSnap = await getDoc(userRef);
+            if (userSnap.exists()) {
+              organizerInfo = (userSnap.data() as UserProfile).basicInfo;
+            }
+          }
+
+          return { ...event, organizer: organizerInfo };
+        })
+      );
+      
       setPendingEvents(eventsList);
     } catch (error) {
       console.error("Error fetching pending events: ", error);
@@ -114,8 +132,8 @@ export default function ApprovalQueuePage() {
                 <TableRow>
                   <TableHead>Event Title</TableHead>
                   <TableHead>University</TableHead>
+                  <TableHead>Organizer</TableHead>
                   <TableHead>Date Submitted</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -124,10 +142,8 @@ export default function ApprovalQueuePage() {
                   <TableRow key={event.id}>
                     <TableCell className="font-medium">{event.title}</TableCell>
                     <TableCell>{event.university}</TableCell>
+                    <TableCell>{event.organizer?.name ?? 'N/A'}</TableCell>
                     <TableCell>{format(event.createdAt, "PPP")}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{event.status}</Badge>
-                    </TableCell>
                     <TableCell className="text-right space-x-2">
                       <Button
                         size="sm"
@@ -182,41 +198,55 @@ export default function ApprovalQueuePage() {
                 Review the event details below before making a decision.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="relative aspect-video rounded-lg overflow-hidden shadow-lg">
-                <Image
-                  src={selectedEvent.imageUrl}
-                  alt={selectedEvent.title}
-                  fill
-                  className="object-cover"
-                  data-ai-hint={selectedEvent.imageHint}
-                />
-              </div>
-              <div className="flex flex-col gap-3 text-sm text-muted-foreground">
-                <div className="flex items-center gap-3">
-                  <University className="h-4 w-4 text-primary" />
-                  <span>{selectedEvent.university}</span>
+            <ScrollArea className="max-h-[70vh] pr-6">
+                <div className="grid gap-6 py-4">
+                <div className="relative aspect-video rounded-lg overflow-hidden shadow-lg">
+                    <Image
+                    src={selectedEvent.imageUrl}
+                    alt={selectedEvent.title}
+                    fill
+                    className="object-cover"
+                    data-ai-hint={selectedEvent.imageHint}
+                    />
                 </div>
-                <div className="flex items-center gap-3">
-                  <Calendar className="h-4 w-4 text-primary" />
-                  <span>{format(selectedEvent.date, "PPP")}</span>
+                <div className="flex flex-col gap-3 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-3">
+                    <University className="h-4 w-4 text-primary" />
+                    <span>{selectedEvent.university}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                    <Calendar className="h-4 w-4 text-primary" />
+                    <span>{format(selectedEvent.date, "PPP")}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                    <Clock className="h-4 w-4 text-primary" />
+                    <span>{selectedEvent.time}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    <span>{selectedEvent.location}</span>
+                    </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Clock className="h-4 w-4 text-primary" />
-                  <span>{selectedEvent.time}</span>
+                <div>
+                    <h3 className="font-semibold text-foreground mb-2">Description</h3>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {selectedEvent.description}
+                    </p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <MapPin className="h-4 w-4 text-primary" />
-                  <span>{selectedEvent.location}</span>
+                 {selectedEvent.organizer && (
+                     <div>
+                        <h3 className="font-semibold text-foreground mb-2">Organizer</h3>
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                            <User className="h-4 w-4 text-primary" />
+                            <div>
+                                <p>{selectedEvent.organizer.name}</p>
+                                <p>{selectedEvent.organizer.email}</p>
+                            </div>
+                        </div>
+                    </div>
+                 )}
                 </div>
-              </div>
-              <div>
-                <h3 className="font-semibold text-foreground mb-2">Description</h3>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                  {selectedEvent.description}
-                </p>
-              </div>
-            </div>
+            </ScrollArea>
             <DialogFooter>
               <Button
                 variant="destructive"
