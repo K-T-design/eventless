@@ -170,7 +170,7 @@ export default function AdminDashboardPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <Button asChild size="sm" variant="outline">
-                          <Link href="/admin/event-management">View</Link>
+                          <Link href={`/events/${event.id}`} target="_blank">View</Link>
                         </Button>
                       </TableCell>
                     </TableRow>
