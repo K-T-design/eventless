@@ -11,6 +11,7 @@ type VerifyPaymentInput = {
   eventId: string;
   userId: string;
   tier: TicketTier;
+  quantity: number;
 };
 
 const SERVICE_FEE = 150;
@@ -18,9 +19,9 @@ const SERVICE_FEE = 150;
 export async function verifyPaymentAndCreateTicket(
   input: VerifyPaymentInput
 ): Promise<{ success: boolean; message: string; ticketId?: string }> {
-  const { reference, eventId, userId, tier } = input;
+  const { reference, eventId, userId, tier, quantity } = input;
   const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
-  const isFreeTicket = reference.startsWith('free-');
+  const isFreeTicket = tier.price === 0;
 
   try {
     let transactionAmount = 0;
@@ -45,7 +46,7 @@ export async function verifyPaymentAndCreateTicket(
        // Amount from Paystack is in kobo
       transactionAmount = data.data.amount / 100;
 
-      const expectedAmount = tier.price + SERVICE_FEE;
+      const expectedAmount = (tier.price * quantity) + SERVICE_FEE;
       if (transactionAmount < expectedAmount) {
          return { success: false, message: 'Amount paid is less than the expected amount.' };
       }
@@ -59,7 +60,9 @@ export async function verifyPaymentAndCreateTicket(
     // Step 2: Check if transaction already processed
     const transactionSnapshot = await firestore.collection('transactions').where('reference', '==', reference).limit(1).get();
     if (!transactionSnapshot.empty) {
-        return { success: true, message: "This transaction has already been processed.", ticketId: transactionSnapshot.docs[0].data().ticketId };
+        // This is tricky with multiple tickets. For now, we assume one transaction = one purchase, even if for multiple tickets.
+        // And we don't return a single ticketId anymore.
+        return { success: true, message: "This transaction has already been processed."};
     }
 
 
@@ -72,31 +75,36 @@ export async function verifyPaymentAndCreateTicket(
     const eventData = eventSnap.data() as Event;
 
     
-    // Step 4: Create Ticket and Transaction docs in a batch
+    // Step 4: Create Tickets and one Transaction doc in a batch
     const batch = firestore.batch();
+    const ticketIds: string[] = [];
 
-    const ticketRef = firestore.collection('tickets').doc();
-    const qrCodeData = `eventless-ticket:${ticketRef.id}`;
-    
-    const newTicket: Omit<Ticket, 'id'> = {
-        eventId: eventId,
-        userId: userId,
-        purchaseDate: FieldValue.serverTimestamp() as Timestamp,
-        status: 'valid',
-        qrCodeData: qrCodeData,
-        tier: tier,
-        eventDetails: {
-          title: eventData.title,
-          date: eventData.date, // This is already a Firestore Timestamp from the source
-          location: eventData.location,
-        },
-    };
-    batch.set(ticketRef, newTicket);
+    for (let i = 0; i < quantity; i++) {
+        const ticketRef = firestore.collection('tickets').doc();
+        const qrCodeData = `eventless-ticket:${ticketRef.id}`;
+        
+        const newTicket: Omit<Ticket, 'id'> = {
+            eventId: eventId,
+            userId: userId,
+            purchaseDate: FieldValue.serverTimestamp() as Timestamp,
+            status: 'valid',
+            qrCodeData: qrCodeData,
+            tier: tier,
+            eventDetails: {
+              title: eventData.title,
+              date: eventData.date, // This is already a Firestore Timestamp from the source
+              location: eventData.location,
+            },
+        };
+        batch.set(ticketRef, newTicket);
+        ticketIds.push(ticketRef.id);
+    }
+
 
     const transactionRef = firestore.collection('transactions').doc();
     const newTransaction: Omit<Transaction, 'id'> = {
         userId: userId,
-        ticketId: ticketRef.id,
+        ticketId: ticketIds.join(','), // Store multiple ticket IDs
         amount: transactionAmount,
         status: 'succeeded',
         paymentGateway: isFreeTicket ? 'free' : 'paystack',
@@ -107,7 +115,7 @@ export async function verifyPaymentAndCreateTicket(
     
     await batch.commit();
 
-    return { success: true, message: 'Ticket created successfully!', ticketId: ticketRef.id };
+    return { success: true, message: `Successfully created ${quantity} ticket(s)!` };
 
   } catch (error: any) {
     console.error('Error in verifyPaymentAndCreateTicket:', error);

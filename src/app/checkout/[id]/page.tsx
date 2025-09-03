@@ -17,6 +17,8 @@ import {
   MapPin,
   Ticket as TicketIcon,
   AlertTriangle,
+  Minus,
+  Plus,
 } from "lucide-react";
 import Image from "next/image";
 import { auth, firestore } from "@/lib/firebase";
@@ -38,6 +40,7 @@ import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { PaystackButton } from "react-paystack";
 import { verifyPaymentAndCreateTicket } from "./actions";
+import { Input } from "@/components/ui/input";
 
 const SERVICE_FEE = 150;
 
@@ -51,6 +54,7 @@ function CheckoutContent({ params }: { params: { id: string } }) {
   const { toast } = useToast();
 
   const [selectedTier, setSelectedTier] = useState<TicketTier | null>(null);
+  const [quantity, setQuantity] = useState(1);
   const [paystackPublicKey, setPaystackPublicKey] = useState("");
 
   useEffect(() => {
@@ -127,12 +131,13 @@ function CheckoutContent({ params }: { params: { id: string } }) {
         eventId: event.id,
         userId: user.uid,
         tier: selectedTier,
+        quantity,
       });
 
       if (result.success) {
         toast({
           title: "Success!",
-          description: result.message || "Your ticket has been secured.",
+          description: result.message || "Your ticket(s) have been secured.",
         });
         router.push("/my-tickets");
       } else {
@@ -158,7 +163,7 @@ function CheckoutContent({ params }: { params: { id: string } }) {
   };
 
   const ticketPrice = selectedTier?.price ?? 0;
-  const totalPrice = ticketPrice > 0 ? ticketPrice + SERVICE_FEE : 0;
+  const totalPrice = ticketPrice > 0 ? (ticketPrice * quantity) + SERVICE_FEE : 0;
   
   const paystackConfig = {
     reference: new Date().getTime().toString(),
@@ -262,10 +267,26 @@ function CheckoutContent({ params }: { params: { id: string } }) {
 
           <div>
             <h4 className="font-semibold mb-3">Order Summary</h4>
+             <div className="flex items-center justify-between mb-4">
+                <span className="text-muted-foreground">Ticket Tier:</span>
+                <span className="font-medium">{selectedTier.name}</span>
+            </div>
+            <div className="flex items-center justify-between mb-4">
+                <label htmlFor="quantity" className="text-muted-foreground">Quantity:</label>
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setQuantity(q => Math.max(1, q-1))} disabled={quantity <= 1}>
+                        <Minus className="h-4 w-4" />
+                    </Button>
+                    <Input id="quantity" type="number" value={quantity} readOnly className="w-16 h-8 text-center" />
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setQuantity(q => q+1)}>
+                        <Plus className="h-4 w-4" />
+                    </Button>
+                </div>
+            </div>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <p className="text-muted-foreground">Ticket ({selectedTier.name}):</p>
-                <p>₦{ticketPrice.toLocaleString()}</p>
+                <p className="text-muted-foreground">Ticket Subtotal:</p>
+                <p>₦{(ticketPrice * quantity).toLocaleString()}</p>
               </div>
                <div className="flex justify-between">
                 <p className="text-muted-foreground">Service Fee:</p>
@@ -312,7 +333,7 @@ function CheckoutContent({ params }: { params: { id: string } }) {
                 ) : (
                   <>
                     <TicketIcon className="mr-2" />
-                    Get Free Ticket
+                    Get Free Ticket(s)
                   </>
                 )}
              </Button>
