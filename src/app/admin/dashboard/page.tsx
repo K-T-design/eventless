@@ -2,14 +2,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, query, where, getCountFromServer, getDocs } from "firebase/firestore";
+import { collection, query, where, getCountFromServer, getDocs, orderBy, limit } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Users, Calendar as CalendarIcon, AlertTriangle, Wallet } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Ticket } from "@/types";
+import type { Event } from "@/types";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { format } from "date-fns";
+import { Badge } from "@/components/ui/badge";
 
 const SERVICE_FEE = 150;
 
@@ -21,6 +24,7 @@ export default function AdminDashboardPage() {
       pendingEvents: 0,
       totalRevenue: 0,
   });
+  const [recentEvents, setRecentEvents] = useState<Event[]>([]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -35,10 +39,22 @@ export default function AdminDashboardPage() {
         const pendingQuery = query(eventsCollection, where("status", "==", "pending"));
         const pendingSnapshot = await getCountFromServer(pendingQuery);
         
-        // Calculate total revenue from service fees on paid tickets
         const paidTicketsQuery = query(ticketsCollection, where("tier.price", ">", 0));
         const paidTicketsSnapshot = await getCountFromServer(paidTicketsQuery);
         const totalRevenue = paidTicketsSnapshot.data().count * SERVICE_FEE;
+
+        const recentEventsQuery = query(eventsCollection, orderBy("createdAt", "desc"), limit(5));
+        const recentEventsSnapshot = await getDocs(recentEventsQuery);
+        const fetchedRecentEvents = recentEventsSnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            date: data.date.toDate(),
+            createdAt: data.createdAt.toDate(),
+          } as Event;
+        });
+        setRecentEvents(fetchedRecentEvents);
 
         setStats({
             totalUsers: usersSnapshot.data().count,
@@ -63,6 +79,18 @@ export default function AdminDashboardPage() {
     fetchDashboardData();
   }, []);
 
+  const getStatusVariant = (status: 'pending' | 'approved' | 'rejected') => {
+    switch (status) {
+        case 'approved':
+            return 'default';
+        case 'pending':
+            return 'secondary';
+        case 'rejected':
+            return 'destructive';
+        default:
+            return 'outline';
+    }
+  }
 
   if (loading) {
     return <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -116,9 +144,46 @@ export default function AdminDashboardPage() {
       </div>
       <div className="mt-8">
         <h2 className="text-2xl font-bold font-headline my-6">Recent Activity</h2>
-         <div className="text-center py-12 border-2 border-dashed rounded-lg bg-card">
-            <p className="text-muted-foreground">Recent activity log will be shown here.</p>
-        </div>
+         <Card>
+           <CardContent className="p-0">
+             {recentEvents.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Event</TableHead>
+                    <TableHead>University</TableHead>
+                    <TableHead>Submitted</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentEvents.map(event => (
+                    <TableRow key={event.id}>
+                      <TableCell className="font-medium">{event.title}</TableCell>
+                      <TableCell>{event.university}</TableCell>
+                      <TableCell>{format(event.createdAt, 'PPp')}</TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusVariant(event.status)} className="capitalize">
+                          {event.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button asChild size="sm" variant="outline">
+                          <Link href="/admin/event-management">View</Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+             ): (
+               <div className="text-center py-12 text-muted-foreground">
+                 No recent events to display.
+               </div>
+             )}
+           </CardContent>
+         </Card>
       </div>
     </>
   );
