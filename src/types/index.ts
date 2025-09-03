@@ -93,3 +93,16 @@ export type OrganizerPayout = {
   ticketsSold: number;
   totalRevenue: number;
 };
+
+export type SupportTicket = {
+    id: string;
+    userId: string;
+    userEmail: string;
+    userName: string;
+    subject: string;
+    message: string;
+    category: 'technical' | 'billing' | 'event_issue' | 'other';
+    status: 'open' | 'in_progress' | 'closed';
+    submittedAt: Date;
+    resolvedAt?: Date;
+}
