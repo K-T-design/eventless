@@ -1,4 +1,3 @@
-
 import { Timestamp } from "firebase/firestore";
 
 export type TicketTier = {
@@ -72,6 +71,7 @@ export type Ticket = {
         title: string;
         date: Date; // Changed to Date
         location: string;
+        organizerId: string; // Added for payout calculation
     }
 }
 
@@ -86,3 +86,10 @@ export type Transaction = {
     // Paystack specific reference
     reference: string;
 }
+
+export type OrganizerPayout = {
+  organizerId: string;
+  organizerName: string;
+  ticketsSold: number;
+  totalRevenue: number;
+};

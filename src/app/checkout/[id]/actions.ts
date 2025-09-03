@@ -1,4 +1,3 @@
-
 'use server';
 
 import { firestore } from '@/lib/firebase-admin';
@@ -94,6 +93,7 @@ export async function verifyPaymentAndCreateTicket(
               title: eventData.title,
               date: eventData.date, // This is already a Firestore Timestamp from the source
               location: eventData.location,
+              organizerId: eventData.organizerId, // Denormalizing for payouts query
             },
         };
         batch.set(ticketRef, newTicket);

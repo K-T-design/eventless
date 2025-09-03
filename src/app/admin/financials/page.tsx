@@ -8,6 +8,10 @@ import { getMonthlyRevenue } from "./actions";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import type { OrganizerPayout } from "./payouts.actions";
+import { getPendingPayouts } from "./payouts.actions";
 
 type ChartData = { month: string; revenue: number };
 
@@ -20,7 +24,9 @@ const chartConfig = {
 
 export default function FinancialsPage() {
   const [chartData, setChartData] = useState<ChartData[]>([]);
+  const [payouts, setPayouts] = useState<OrganizerPayout[]>([]);
   const [loading, setLoading] = useState(true);
+  const [payoutsLoading, setPayoutsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -41,7 +47,23 @@ export default function FinancialsPage() {
       setLoading(false);
     };
 
+    const fetchPayouts = async () => {
+      setPayoutsLoading(true);
+      const result = await getPendingPayouts();
+      if (result.success && result.data) {
+        setPayouts(result.data);
+      } else {
+         toast({
+          variant: "destructive",
+          title: "Error fetching payouts",
+          description: result.message || "Could not load payout data."
+        });
+      }
+      setPayoutsLoading(false);
+    }
+
     fetchData();
+    fetchPayouts();
   }, []);
 
   return (
@@ -93,11 +115,43 @@ export default function FinancialsPage() {
                 <CardDescription>A list of organizers with a balance owed. Payouts are handled manually for now.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="text-center py-12 border-2 border-dashed rounded-lg bg-card">
-                    <p className="text-muted-foreground">Payouts management will be shown here.</p>
-                </div>
+                {payoutsLoading ? (
+                    <div className="flex items-center justify-center min-h-[200px]">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                ) : payouts.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Organizer</TableHead>
+                        <TableHead>Tickets Sold</TableHead>
+                        <TableHead className="text-right">Payout Due</TableHead>
+                        <TableHead className="text-right">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {payouts.map((payout) => (
+                        <TableRow key={payout.organizerId}>
+                          <TableCell className="font-medium">{payout.organizerName}</TableCell>
+                          <TableCell>{payout.ticketsSold}</TableCell>
+                          <TableCell className="text-right font-semibold">₦{payout.totalRevenue.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="outline" size="sm" disabled>
+                              Mark as Paid
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                   <div className="text-center py-12 border-2 border-dashed rounded-lg bg-card">
+                      <p className="text-muted-foreground">No pending payouts found.</p>
+                  </div>
+                )}
             </CardContent>
         </Card>
       </div>
     </>
   );
+}
