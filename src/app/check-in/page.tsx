@@ -10,7 +10,7 @@ import jsQR from "jsqr";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
-import type { Ticket as TicketType } from "@/types";
+import type { Ticket as TicketType, UserProfile } from "@/types";
 import { format } from "date-fns";
 
 type TicketStatus = "valid" | "used" | "invalid" | "loading";
@@ -19,7 +19,7 @@ type ScannedTicketInfo = {
     status: TicketStatus;
     id: string;
     eventName: string;
-    attendee: string; // This would be fetched in a real scenario
+    attendee: string;
 }
 
 export default function CheckInPage() {
@@ -99,8 +99,15 @@ export default function CheckInPage() {
     };
   }, [isScanning, hasCameraPermission]);
   
-  const handleQrCodeScanned = async (ticketId: string) => {
-    setScannedData({ status: 'loading', id: ticketId, eventName: '...', attendee: '...' });
+  const handleQrCodeScanned = async (scannedQrData: string) => {
+    const prefix = "eventless-ticket:";
+    if (!scannedQrData.startsWith(prefix)) {
+        setScannedData({ status: 'invalid', id: "N/A", eventName: "N/A", attendee: "N/A" });
+        return;
+    }
+    
+    const ticketId = scannedQrData.substring(prefix.length);
+    setScannedData({ status: 'loading', id: ticketId, eventName: 'Verifying...', attendee: '...' });
     
     try {
         const ticketRef = doc(firestore, "tickets", ticketId);
@@ -113,12 +120,15 @@ export default function CheckInPage() {
 
         const ticketData = ticketSnap.data() as TicketType;
         
-        // TODO: Fetch user name from users collection using ticketData.userId for attendee name
+        // Fetch user name for attendee info
+        const userRef = doc(firestore, "users", ticketData.userId);
+        const userSnap = await getDoc(userRef);
+        const attendeeName = userSnap.exists() ? (userSnap.data() as UserProfile).basicInfo.name : "Unknown Attendee";
         
         if (ticketData.status === 'used') {
-            setScannedData({ status: 'used', id: ticketId, eventName: ticketData.eventDetails?.title ?? "Event", attendee: "Fetched Name" });
+            setScannedData({ status: 'used', id: ticketId, eventName: ticketData.eventDetails?.title ?? "Event", attendee: attendeeName });
         } else {
-             setScannedData({ status: 'valid', id: ticketId, eventName: ticketData.eventDetails?.title ?? "Event", attendee: "Fetched Name" });
+             setScannedData({ status: 'valid', id: ticketId, eventName: ticketData.eventDetails?.title ?? "Event", attendee: attendeeName });
         }
 
     } catch (error) {
