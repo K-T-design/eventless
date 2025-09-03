@@ -6,7 +6,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, query, where, onSnapshot, orderBy, Timestamp } from 'firebase/firestore';
 import { auth, firestore } from '@/lib/firebase';
 import type { Ticket } from '@/types';
-import { Loader2, QrCode, Calendar, MapPin, Ticket as TicketIcon, Dot } from 'lucide-react';
+import { Calendar, MapPin, Ticket as TicketIcon, Dot } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
+import { QRCodeCanvas } from 'qrcode.react';
 
 export default function MyTicketsPage() {
   const [user, authLoading] = useAuthState(auth);
@@ -115,7 +116,7 @@ export default function MyTicketsPage() {
         <Accordion type="single" collapsible className="w-full space-y-4">
           {tickets.map(ticket => (
             <AccordionItem key={ticket.id} value={ticket.id} className="border-b-0">
-                 <AccordionTrigger className="p-4 bg-card rounded-lg shadow-sm hover:no-underline hover:shadow-md transition-shadow">
+                 <AccordionTrigger className="p-4 bg-card rounded-lg shadow-sm hover:no-underline hover:shadow-md transition-shadow data-[state=open]:rounded-b-none">
                      <div className="flex w-full items-start justify-between text-left">
                         <div>
                             <h3 className="font-bold text-lg">{ticket.eventDetails?.title ?? 'Event Title'}</h3>
@@ -133,8 +134,8 @@ export default function MyTicketsPage() {
                  </AccordionTrigger>
                  <AccordionContent className="bg-card rounded-b-lg p-6 border-t">
                     <div className="flex flex-col items-center text-center">
-                        <div className="mb-6 p-4 bg-white rounded-lg">
-                           <QrCode className="h-48 w-48 text-foreground" />
+                        <div className="mb-6 p-4 bg-white rounded-lg shadow-inner">
+                           <QRCodeCanvas value={ticket.qrCodeData} size={200} />
                         </div>
                         <div className="w-full space-y-3 text-sm">
                              <div className="flex justify-between">
@@ -152,7 +153,7 @@ export default function MyTicketsPage() {
                                 <span className="font-bold">₦{(ticket.tier.price).toLocaleString()}</span>
                             </div>
                         </div>
-                        <Button className="w-full mt-6" size="lg">Show Fullscreen</Button>
+                        <Button className="w-full mt-6" size="lg" disabled>Show Fullscreen</Button>
                     </div>
                  </AccordionContent>
             </AccordionItem>
