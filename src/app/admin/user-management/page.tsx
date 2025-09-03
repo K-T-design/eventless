@@ -20,11 +20,8 @@ import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
-// Add a uid to the local type for mapping
-type UserProfileWithId = UserProfile & { id: string };
-
 export default function UserManagementPage() {
-  const [users, setUsers] = useState<UserProfileWithId[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchUsers = async () => {
@@ -34,11 +31,10 @@ export default function UserManagementPage() {
       const q = query(usersCollection);
       const querySnapshot = await getDocs(q);
       const usersList = querySnapshot.docs.map((doc) => {
-        const data = doc.data() as UserProfile;
         return {
           id: doc.id,
-          ...data,
-        } as UserProfileWithId;
+          ...doc.data(),
+        } as UserProfile;
       });
       setUsers(usersList);
     } catch (error) {
