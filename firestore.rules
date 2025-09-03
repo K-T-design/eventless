@@ -1,39 +1,44 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can read/write their own profile, but cannot change their userType.
+    
+    // Allow public read for approved events
+    match /events/{eventId} {
+      allow read: if resource.data.status == 'approved';
+      // More specific create/update/delete rules needed for production
+      allow write: if request.auth != null; 
+    }
+    
+    // Ticket Tiers can be read if the parent event can be read
+    match /events/{eventId}/ticketTiers/{tierId} {
+      allow read: if get(/databases/$(database)/documents/events/$(eventId)).data.status == 'approved';
+      allow write: if request.auth != null; // Should be restricted to event owner
+    }
+
     match /users/{userId} {
+      // Users can only read/write their own profile
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-    
-    // Events can be read by anyone, but only created/updated by authenticated users.
-    // Further rules would be needed to restrict updates to the event organizer.
-    match /events/{eventId} {
-      allow read;
-      allow write: if request.auth != null;
-      
-      // Ticket tiers are part of an event, readable by anyone.
-      match /ticketTiers/{tierId} {
-        allow read;
-        allow write: if request.auth != null;
-      }
-    }
-    
-    // Users can only read and create their own tickets.
-    // The create rule allows our server action (authenticated as a user) to create tickets.
-    // The read rule allows a user to query for tickets where their UID matches the userId field.
+
     match /tickets/{ticketId} {
-      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null;
+      // A user can GET a ticket if they are the owner.
+      allow get: if request.auth != null && request.auth.uid == resource.data.userId;
+      
+      // A user can LIST (query) tickets only if they are querying for their own tickets.
+      // This is the critical rule that fixes the "My Tickets" page.
+      allow list: if request.auth != null && request.auth.uid == request.query.filters.userId;
+
+      // Creating tickets is handled by a server-side function, which has admin rights.
+      // No client should be able to write directly to the tickets collection.
+      allow create, update, delete: if false;
     }
-    
-    // Transactions should be write-only for users, handled by server-side logic.
+
     match /transactions/{transactionId} {
-        allow create: if request.auth != null;
-        // Generally, users should not be able to read all transactions.
-        allow read, update, delete: if false;
+      // Only the user who made the transaction can read it.
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      // Creation is server-side only.
+      allow create, update, delete: if false;
     }
   }
 }
