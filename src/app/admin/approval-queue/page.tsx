@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { collection, query, where, getDocs, doc, updateDoc, getDoc } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
-import type { Event, UserProfile } from "@/types";
+import type { Event, UserProfile, TicketTier } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -17,7 +17,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { Loader2, Calendar, MapPin, University, Clock, User } from "lucide-react";
+import { Loader2, Calendar, MapPin, University, Clock, User, Ticket } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
@@ -30,7 +30,10 @@ import {
 import Image from "next/image";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-type EventWithOrganizer = Event & { organizer?: UserProfile['basicInfo'] };
+type EventWithOrganizer = Event & { 
+  organizer?: UserProfile['basicInfo'];
+  ticketTiers?: TicketTier[];
+};
 
 export default function ApprovalQueuePage() {
   const [pendingEvents, setPendingEvents] = useState<EventWithOrganizer[]>([]);
@@ -62,8 +65,12 @@ export default function ApprovalQueuePage() {
               organizerInfo = (userSnap.data() as UserProfile).basicInfo;
             }
           }
+          
+          const tiersRef = collection(docSnapshot.ref, "ticketTiers");
+          const tiersSnapshot = await getDocs(tiersRef);
+          const ticketTiers = tiersSnapshot.docs.map(tierDoc => tierDoc.data() as TicketTier);
 
-          return { ...event, organizer: organizerInfo };
+          return { ...event, organizer: organizerInfo, ticketTiers };
         })
       );
       
@@ -232,6 +239,25 @@ export default function ApprovalQueuePage() {
                     <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                     {selectedEvent.description}
                     </p>
+                </div>
+                <div>
+                    <h3 className="font-semibold text-foreground mb-2">Ticket Tiers</h3>
+                    <div className="space-y-2">
+                        {selectedEvent.ticketTiers?.map(tier => (
+                            <div key={tier.name} className="flex justify-between items-center p-2 rounded-md bg-muted/50 text-sm">
+                                <div>
+                                    <p className="font-medium">{tier.name}</p>
+                                    <p className="text-xs text-muted-foreground">Qty: {tier.quantity.toLocaleString()}</p>
+                                </div>
+                                <p className="font-semibold text-primary">
+                                    {tier.price > 0 ? `₦${tier.price.toLocaleString()}` : 'Free'}
+                                </p>
+                            </div>
+                        ))}
+                         {(!selectedEvent.ticketTiers || selectedEvent.ticketTiers.length === 0) && (
+                            <p className="text-sm text-muted-foreground">No ticket tiers found for this event.</p>
+                        )}
+                    </div>
                 </div>
                  {selectedEvent.organizer && (
                      <div>
