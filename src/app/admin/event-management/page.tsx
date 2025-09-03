@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { updateEventStatus } from "./actions";
 
 type EventStatus = 'pending' | 'approved' | 'rejected';
 
@@ -66,6 +67,24 @@ export default function EventManagementPage() {
   useEffect(() => {
     fetchEvents();
   }, []);
+
+  const handleTakeDown = async (eventId: string) => {
+    const result = await updateEventStatus(eventId, 'rejected');
+    if (result.success) {
+      toast({
+        title: "Event Taken Down",
+        description: "The event has been removed from the public listing.",
+      });
+      // Optimistically update the UI
+      setEvents(events.map(e => e.id === eventId ? { ...e, status: 'rejected' } : e));
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: result.message,
+      });
+    }
+  };
 
   const universities = useMemo(() => [...new Set(events.map(event => event.university))], [events]);
 
@@ -159,8 +178,15 @@ export default function EventManagementPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right space-x-2">
-                        <Button size="sm" variant="outline">View</Button>
-                        <Button size="sm" variant="destructive">Take Down</Button>
+                        <Button size="sm" variant="outline" disabled>View</Button>
+                        <Button 
+                          size="sm" 
+                          variant="destructive" 
+                          disabled={event.status !== 'approved'}
+                          onClick={() => handleTakeDown(event.id)}
+                        >
+                          Take Down
+                        </Button>
                     </TableCell>
                   </TableRow>
                 ))}
