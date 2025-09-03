@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,6 +26,8 @@ import {
   addDoc,
   collection,
   serverTimestamp,
+  getDocs as getSubDocs,
+  query,
 } from "firebase/firestore";
 import type { Event, Ticket, Transaction, TicketTier } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,8 +40,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const SERVICE_FEE = 150;
 
-export default function CheckoutPage({ params }: { params: { id: string } }) {
+function CheckoutContent({ params }: { params: { id: string } }) {
   const [event, setEvent] = useState<Event | null>(null);
+  const [ticketTiers, setTicketTiers] = useState<TicketTier[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [user, authLoading] = useAuthState(auth);
@@ -66,19 +69,24 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
           return;
         }
 
-        const docRef = doc(firestore, "events", eventId);
-        const docSnap = await getDoc(docRef);
+        const eventDocRef = doc(firestore, "events", eventId);
+        const eventDocSnap = await getDoc(eventDocRef);
 
-        if (docSnap.exists()) {
-          const data = docSnap.data();
+        if (eventDocSnap.exists()) {
+          const data = eventDocSnap.data();
           const fetchedEvent = {
-            id: docSnap.id,
+            id: eventDocSnap.id,
             ...data,
             date: data.date.toDate(),
           } as Event;
           setEvent(fetchedEvent);
           
-          const tier = fetchedEvent.ticketTiers.find(t => t.name === tierName);
+          const tiersQuery = query(collection(eventDocRef, "ticketTiers"));
+          const tiersSnapshot = await getSubDocs(tiersQuery);
+          const fetchedTiers = tiersSnapshot.docs.map(doc => doc.data() as TicketTier);
+          setTicketTiers(fetchedTiers);
+
+          const tier = fetchedTiers.find(t => t.name === tierName);
           if (tier) {
             setSelectedTier(tier);
           } else {
@@ -116,7 +124,7 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
         userId: user.uid,
         purchaseDate: serverTimestamp(),
         status: "valid",
-        qrCodeData: `eventless-ticket:${event.id}:${user.uid}`, // Simple QR data
+        qrCodeData: `eventless-ticket:${Date.now()}:${user.uid}`, // Make it more unique
         tier: selectedTier, // Save the selected tier
         eventDetails: {
           title: event.title,
@@ -162,13 +170,24 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
   if (loading || authLoading) {
     return (
       <div className="container mx-auto max-w-lg py-12 px-4">
-        <Skeleton className="h-96 w-full" />
+         <Card>
+            <CardHeader>
+                <Skeleton className="h-8 w-3/4" />
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <Skeleton className="h-28 w-full" />
+                <Skeleton className="h-24 w-full" />
+                 <Skeleton className="h-12 w-full" />
+            </CardContent>
+            <CardFooter>
+                 <Skeleton className="h-12 w-full" />
+            </CardFooter>
+        </Card>
       </div>
     );
   }
 
   if (!event || !selectedTier) {
-    // This case is mostly handled by the redirect in useEffect, but it's a good fallback.
     return (
       <div className="container mx-auto max-w-lg py-12 px-4 text-center">
         <Card>
@@ -223,6 +242,7 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
                 alt={event.title}
                 fill
                 className="object-cover"
+                data-ai-hint={event.imageHint}
               />
             </div>
             <div>
@@ -249,7 +269,7 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
               </div>
                <div className="flex justify-between">
                 <p className="text-muted-foreground">Service Fee:</p>
-                <p>₦{SERVICE_FEE.toLocaleString()}</p>
+                <p>{ticketPrice > 0 ? `₦${SERVICE_FEE.toLocaleString()}` : '₦0'}</p>
               </div>
               <Separator />
               <div className="flex justify-between font-bold text-base">
@@ -271,7 +291,7 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
             size="lg"
             className="w-full"
             onClick={handlePurchase}
-            disabled={processing}
+            disabled={processing || authLoading || !user}
           >
             {processing ? (
               <Loader2 className="animate-spin" />
@@ -284,6 +304,20 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
           </Button>
         </CardFooter>
       </Card>
+       {!user && !authLoading && (
+        <p className="text-center text-sm text-muted-foreground mt-4">
+            Please <a href="/auth/signin" className="underline font-semibold">sign in</a> to complete your purchase.
+        </p>
+        )}
     </div>
   );
+}
+
+
+export default function CheckoutPage({ params }: { params: { id: string } }) {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CheckoutContent params={params} />
+    </Suspense>
+  )
 }

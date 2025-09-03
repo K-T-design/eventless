@@ -4,6 +4,7 @@ import { Timestamp } from "firebase/firestore";
 export type TicketTier = {
   name: string;
   price: number;
+  quantity: number;
   description?: string;
 }
 
@@ -15,7 +16,8 @@ export type Event = {
   date: Date;
   time: string;
   location:string;
-  ticketTiers: TicketTier[];
+  // This is now deprecated and will be removed later. We use the subcollection.
+  ticketTiers?: TicketTier[]; 
   imageUrl: string;
   imageHint: string;
   description: string;

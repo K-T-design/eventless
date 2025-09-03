@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar, Clock, Loader2, MapPin, Ticket, University } from "lucide-react";
 import Image from "next/image";
 import { auth, firestore } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs as getSubDocs, query } from "firebase/firestore";
 import type { Event, TicketTier } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
@@ -23,6 +23,7 @@ const getLowestPrice = (tiers: TicketTier[] | undefined) => {
 
 export default function EventDetailPage({ params }: { params: { id: string } }) {
   const [event, setEvent] = useState<Event | null>(null);
+  const [ticketTiers, setTicketTiers] = useState<TicketTier[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, authLoading] = useAuthState(auth);
   const router = useRouter();
@@ -31,16 +32,23 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
     if (params.id) {
       const fetchEvent = async () => {
         setLoading(true);
-        const docRef = doc(firestore, "events", params.id);
-        const docSnap = await getDoc(docRef);
+        const eventDocRef = doc(firestore, "events", params.id);
+        const eventDocSnap = await getDoc(eventDocRef);
 
-        if (docSnap.exists()) {
-          const data = docSnap.data();
+        if (eventDocSnap.exists()) {
+          const data = eventDocSnap.data();
           setEvent({
-            id: docSnap.id,
+            id: eventDocSnap.id,
             ...data,
             date: data.date.toDate(),
           } as Event);
+          
+          // Fetch ticket tiers from subcollection
+          const tiersQuery = query(collection(eventDocRef, "ticketTiers"));
+          const tiersSnapshot = await getSubDocs(tiersQuery);
+          const tiersList = tiersSnapshot.docs.map(doc => doc.data() as TicketTier);
+          setTicketTiers(tiersList);
+
         } else {
           console.error("No such document!");
           toast({
@@ -82,7 +90,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
   }
   
   const isEventInThePast = new Date() > event.date;
-  const lowestPrice = getLowestPrice(event.ticketTiers);
+  const lowestPrice = getLowestPrice(ticketTiers);
 
   return (
     <div className="container mx-auto max-w-5xl py-12 px-4">
@@ -123,12 +131,12 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
                 <p className="text-3xl font-bold text-primary">
                     {lowestPrice > 0 ? `₦${lowestPrice.toLocaleString()}` : 'Free'}
                 </p>
+                 {!user && !authLoading && (
+                    <p className="text-center text-sm text-muted-foreground mt-4">
+                        You must be <a href="/auth/signin" className="underline font-semibold">signed in</a> to get a ticket.
+                    </p>
+                )}
             </div>
-            {!user && !authLoading && (
-                <p className="text-center text-sm text-muted-foreground mt-4">
-                    You must be <a href="/auth/signin" className="underline font-semibold">signed in</a> to get a ticket.
-                </p>
-            )}
         </div>
         
         <div className="md:col-span-2">
@@ -142,7 +150,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
                  <div>
                     <h2 className="text-3xl font-bold font-headline mb-4 border-b pb-2">Tickets</h2>
                      <div className="space-y-4">
-                        {event.ticketTiers.map(tier => (
+                        {ticketTiers.map(tier => (
                             <div key={tier.name} className="p-4 border rounded-lg bg-card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                 <div>
                                     <h3 className="font-bold text-lg">{tier.name}</h3>
@@ -163,6 +171,9 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
                                 </Button>
                             </div>
                         ))}
+                         {ticketTiers.length === 0 && !loading && (
+                            <p className="text-muted-foreground text-sm">Tickets are not available for this event yet.</p>
+                        )}
                     </div>
                 </div>
             </div>
