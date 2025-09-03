@@ -38,6 +38,20 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "basicInfo.userType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "orgInfo.payouts.balance",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []
