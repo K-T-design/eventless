@@ -2,17 +2,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, query, where, getCountFromServer } from "firebase/firestore";
+import { collection, query, where, getCountFromServer, getDocs } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Users, Calendar as CalendarIcon, AlertTriangle } from "lucide-react";
+import { Loader2, Users, Calendar as CalendarIcon, AlertTriangle, Wallet } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { Event } from "@/types";
+import type { Ticket } from "@/types";
 import { Button } from "@/components/ui/button";
-import { format } from "date-fns";
 import Link from "next/link";
 
+const SERVICE_FEE = 150;
 
 export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
@@ -20,6 +19,7 @@ export default function AdminDashboardPage() {
       totalUsers: 0,
       totalEvents: 0,
       pendingEvents: 0,
+      totalRevenue: 0,
   });
 
   const fetchDashboardData = async () => {
@@ -27,17 +27,24 @@ export default function AdminDashboardPage() {
     try {
         const usersCollection = collection(firestore, "users");
         const eventsCollection = collection(firestore, "events");
+        const ticketsCollection = collection(firestore, "tickets");
         
         const usersSnapshot = await getCountFromServer(usersCollection);
         const eventsSnapshot = await getCountFromServer(eventsCollection);
         
         const pendingQuery = query(eventsCollection, where("status", "==", "pending"));
         const pendingSnapshot = await getCountFromServer(pendingQuery);
+        
+        // Calculate total revenue from service fees on paid tickets
+        const paidTicketsQuery = query(ticketsCollection, where("tier.price", ">", 0));
+        const paidTicketsSnapshot = await getCountFromServer(paidTicketsQuery);
+        const totalRevenue = paidTicketsSnapshot.data().count * SERVICE_FEE;
 
         setStats({
             totalUsers: usersSnapshot.data().count,
             totalEvents: eventsSnapshot.data().count,
             pendingEvents: pendingSnapshot.data().count,
+            totalRevenue: totalRevenue,
         });
 
     } catch (error) {
@@ -64,7 +71,16 @@ export default function AdminDashboardPage() {
   return (
     <>
       <h1 className="text-3xl font-bold font-headline mb-6">Dashboard</h1>
-      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">₦{stats.totalRevenue.toLocaleString()}</div>
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
