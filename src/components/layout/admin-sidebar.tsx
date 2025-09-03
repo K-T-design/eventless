@@ -14,6 +14,10 @@ import {
   AlertCircle,
   LayoutDashboard,
 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { collection, query, where, getCountFromServer } from "firebase/firestore";
+import { firestore } from "@/lib/firebase";
+
 
 export function AdminSidebar() {
   return (
@@ -35,9 +39,22 @@ export function AdminSidebar() {
 
 export function AdminSidebarNav({ className }: { className?: string }) {
     const pathname = usePathname();
-    // These counts would be fetched from the database in a real scenario
-    const pendingApprovalCount = 6;
-    const supportInboxCount = 12;
+    const [pendingApprovalCount, setPendingApprovalCount] = useState(0);
+
+    useEffect(() => {
+        const fetchCounts = async () => {
+            try {
+                const eventsRef = collection(firestore, "events");
+                const pendingQuery = query(eventsRef, where("status", "==", "pending"));
+                const pendingSnapshot = await getCountFromServer(pendingQuery);
+                setPendingApprovalCount(pendingSnapshot.data().count);
+            } catch (error) {
+                console.error("Failed to fetch notification counts:", error);
+            }
+        };
+
+        fetchCounts();
+    }, []);
 
     const navItems = [
         { href: "/admin/dashboard", label: "Dashboard Home", icon: Home },
@@ -45,7 +62,7 @@ export function AdminSidebarNav({ className }: { className?: string }) {
         { href: "/admin/user-management", label: "User Management", icon: Users },
         { href: "/admin/event-management", label: "Event Management", icon: Calendar },
         { href: "/admin/financials", label: "Financials", icon: Wallet },
-        { href: "/admin/support-inbox", label: "Support Inbox", icon: Inbox, count: supportInboxCount },
+        { href: "/admin/support-inbox", label: "Support Inbox", icon: Inbox },
     ];
     
     return (
@@ -61,11 +78,11 @@ export function AdminSidebarNav({ className }: { className?: string }) {
                     >
                     <item.icon className="h-4 w-4" />
                     {item.label}
-                    {item.count && (
+                    {item.count && item.count > 0 ? (
                         <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
                             {item.count}
                         </Badge>
-                    )}
+                    ) : null}
                 </Link>
             ))}
         </nav>
