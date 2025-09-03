@@ -11,12 +11,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Event } from "@/types";
-import { Search } from "lucide-react";
+import { Search, Calendar as CalendarIcon } from "lucide-react";
 import { firestore } from "@/lib/firebase";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, Timestamp } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EVENT_CATEGORIES } from "@/lib/categories";
 import { NIGERIAN_UNIVERSITIES } from "@/lib/universities";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { addDays, format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import { type DateRange } from "react-day-picker";
 
 export default function DiscoverPage() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -24,6 +30,7 @@ export default function DiscoverPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUniversity, setSelectedUniversity] = useState<string>("all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [date, setDate] = useState<DateRange | undefined>(undefined);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -37,7 +44,7 @@ export default function DiscoverPage() {
           return {
             id: doc.id,
             ...data,
-            date: data.date.toDate(),
+            date: (data.date as Timestamp).toDate(),
           } as Event;
         });
         setEvents(eventsList);
@@ -61,12 +68,18 @@ export default function DiscoverPage() {
       )
       .filter((event) =>
         selectedCategory !== 'all' ? event.category === selectedCategory : true
-      );
-  }, [events, searchTerm, selectedUniversity, selectedCategory]);
+      )
+      .filter((event) => {
+        if (!date?.from) return true;
+        const fromDate = new Date(date.from.setHours(0,0,0,0));
+        const toDate = date.to ? new Date(date.to.setHours(23,59,59,999)) : fromDate;
+        
+        return event.date >= fromDate && event.date <= toDate;
+      });
+  }, [events, searchTerm, selectedUniversity, selectedCategory, date]);
   
   const universities = useMemo(() => {
     const uniqueUniversities = [...new Set(events.map(event => event.university))];
-    // We can use the larger static list if there are no events yet, or combine them
     return uniqueUniversities.length > 0 ? uniqueUniversities.sort() : NIGERIAN_UNIVERSITIES.sort();
   }, [events]);
 
@@ -79,8 +92,8 @@ export default function DiscoverPage() {
         </p>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 mb-8 p-4 bg-card rounded-lg shadow-sm sticky top-16 z-40">
-        <div className="relative flex-grow">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 p-4 bg-card rounded-lg shadow-sm sticky top-16 z-40">
+        <div className="relative lg:col-span-2">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input 
             placeholder="Search by event title..." 
@@ -90,7 +103,7 @@ export default function DiscoverPage() {
           />
         </div>
         <Select onValueChange={setSelectedUniversity} defaultValue={selectedUniversity}>
-          <SelectTrigger className="w-full md:w-[280px]">
+          <SelectTrigger>
             <SelectValue placeholder="Filter by university" />
           </SelectTrigger>
           <SelectContent>
@@ -101,7 +114,7 @@ export default function DiscoverPage() {
           </SelectContent>
         </Select>
          <Select onValueChange={setSelectedCategory} defaultValue={selectedCategory}>
-          <SelectTrigger className="w-full md:w-[280px]">
+          <SelectTrigger>
             <SelectValue placeholder="Filter by category" />
           </SelectTrigger>
           <SelectContent>
@@ -111,6 +124,44 @@ export default function DiscoverPage() {
             ))}
           </SelectContent>
         </Select>
+         <div className="md:col-span-2 lg:col-span-4">
+             <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="date"
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !date && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date?.from ? (
+                      date.to ? (
+                        <>
+                          {format(date.from, "LLL dd, y")} -{" "}
+                          {format(date.to, "LLL dd, y")}
+                        </>
+                      ) : (
+                        format(date.from, "LLL dd, y")
+                      )
+                    ) : (
+                      <span>Pick a date range</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={date?.from}
+                    selected={date}
+                    onSelect={setDate}
+                    numberOfMonths={2}
+                  />
+                </PopoverContent>
+              </Popover>
+        </div>
       </div>
 
       {loading ? (
@@ -139,3 +190,5 @@ export default function DiscoverPage() {
     </div>
   );
 }
+
+    

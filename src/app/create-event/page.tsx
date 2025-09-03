@@ -30,13 +30,16 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth, firestore } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp, writeBatch, doc } from "firebase/firestore";
+import { collection, writeBatch, doc, getDoc, increment, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { EVENT_CATEGORIES } from "@/lib/categories";
 import { NIGERIAN_UNIVERSITIES } from "@/lib/universities";
+import type { UserProfile } from "@/types";
+import { Skeleton } from "@/components/ui/skeleton";
+import Link from "next/link";
 
 const ticketTierSchema = z.object({
   name: z.string().min(1, "Tier name is required."),
@@ -60,7 +63,26 @@ const formSchema = z.object({
 export default function CreateEventPage() {
   const [loading, setLoading] = useState(false);
   const [user, authLoading] = useAuthState(auth);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
   const router = useRouter();
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+        if (user) {
+            setProfileLoading(true);
+            const userDocRef = doc(firestore, 'users', user.uid);
+            const userDocSnap = await getDoc(userDocRef);
+            if (userDocSnap.exists()) {
+                setUserProfile({ id: userDocSnap.id, ...userDocSnap.data() } as UserProfile);
+            }
+            setProfileLoading(false);
+        } else if (!authLoading) {
+            setProfileLoading(false);
+        }
+    };
+    fetchUserProfile();
+  }, [user, authLoading]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -81,7 +103,7 @@ export default function CreateEventPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
 
-    if (!user) {
+    if (!user || !userProfile) {
         toast({
             variant: "destructive",
             title: "Not Authenticated",
@@ -91,8 +113,25 @@ export default function CreateEventPage() {
         router.push('/auth/signin');
         return;
     }
+    
+    const isOrg = userProfile.basicInfo.userType === 'organizer';
+    const limit = isOrg ? 8 : 5;
+    const eventsUsed = userProfile.subscription.freeEventsUsed;
+
+    if (eventsUsed >= limit) {
+        toast({
+            variant: "destructive",
+            title: "Free Limit Reached",
+            description: `You have used all your free events for this month. Please upgrade your plan.`,
+        });
+        setLoading(false);
+        return;
+    }
 
     try {
+        const batch = writeBatch(firestore);
+
+        const newEventRef = doc(collection(firestore, "events"));
         const newEventData = {
             title: values.title,
             description: values.description,
@@ -107,14 +146,16 @@ export default function CreateEventPage() {
             imageUrl: "https://picsum.photos/1200/600",
             imageHint: "event poster placeholder",
         };
+        batch.set(newEventRef, newEventData);
 
-        const eventDocRef = await addDoc(collection(firestore, "events"), newEventData);
-
-        const batch = writeBatch(firestore);
         values.ticketTiers.forEach(tier => {
-            const tierRef = doc(collection(firestore, `events/${eventDocRef.id}/ticketTiers`));
+            const tierRef = doc(collection(firestore, `events/${newEventRef.id}/ticketTiers`));
             batch.set(tierRef, tier);
         });
+
+        const userRef = doc(firestore, 'users', user.uid);
+        batch.update(userRef, { 'subscription.freeEventsUsed': increment(1) });
+        
         await batch.commit();
 
         toast({
@@ -123,7 +164,7 @@ export default function CreateEventPage() {
         });
         
         form.reset();
-        router.push(`/events/${eventDocRef.id}`);
+        router.push(`/events/${newEventRef.id}`);
 
     } catch (error: any) {
          toast({
@@ -136,12 +177,9 @@ export default function CreateEventPage() {
     }
   }
   
-  const userType = "Individual";
-  const eventsCreated = 2;
-  const eventLimit = userType === "Individual" ? 5 : 8;
-  const eventsLeft = eventLimit - eventsCreated;
+  const isLoading = authLoading || profileLoading;
 
-  if (authLoading) {
+  if (isLoading) {
     return (
         <div className="container mx-auto max-w-3xl py-12 px-4 flex justify-center">
             <Loader2 className="h-8 w-8 animate-spin" />
@@ -149,17 +187,22 @@ export default function CreateEventPage() {
     )
   }
 
-  if (!user && !authLoading) {
+  if (!user && !isLoading) {
      return (
         <div className="container mx-auto max-w-3xl py-12 px-4 text-center">
              <h1 className="text-2xl font-bold font-headline mb-4">Access Denied</h1>
              <p className="text-muted-foreground mb-6">You need to be logged in to create an event.</p>
              <Button asChild>
-                <a href="/auth/signin">Sign In</a>
+                <Link href="/auth/signin">Sign In</Link>
              </Button>
         </div>
     )
   }
+  
+  const isOrganizer = userProfile?.basicInfo.userType === 'organizer';
+  const eventLimit = isOrganizer ? 8 : 5;
+  const eventsUsed = userProfile?.subscription.freeEventsUsed ?? 0;
+  const eventsLeft = Math.max(0, eventLimit - eventsUsed);
 
   return (
     <div className="container mx-auto max-w-3xl py-12 px-4">
@@ -170,14 +213,18 @@ export default function CreateEventPage() {
         </p>
       </div>
 
-      <Alert className="mb-8 bg-primary/5 border-primary/20">
-        <Info className="h-4 w-4 text-primary" />
-        <AlertTitle className="text-primary font-bold">Free Event Limit</AlertTitle>
-        <AlertDescription>
-          You have <strong>{eventsLeft}</strong> free events left this month.{" "}
-          <a href="/pricing" className="underline font-medium">Upgrade</a> for unlimited events.
-        </AlertDescription>
-      </Alert>
+       {userProfile ? (
+            <Alert className="mb-8 bg-primary/5 border-primary/20">
+                <Info className="h-4 w-4 text-primary" />
+                <AlertTitle className="text-primary font-bold">Free Event Limit</AlertTitle>
+                <AlertDescription>
+                You have <strong>{eventsLeft}</strong> free events left this month.{" "}
+                <Link href="/pricing" className="underline font-medium">Upgrade</Link> for unlimited events.
+                </AlertDescription>
+            </Alert>
+       ) : (
+            <Skeleton className="h-20 w-full mb-8" />
+       )}
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -419,7 +466,7 @@ export default function CreateEventPage() {
                 </div>
             </div>
 
-          <Button type="submit" size="lg" className="w-full" disabled={loading || authLoading}>
+          <Button type="submit" size="lg" className="w-full" disabled={loading || isLoading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Submit for Approval
           </Button>
@@ -428,3 +475,5 @@ export default function CreateEventPage() {
     </div>
   );
 }
+
+    

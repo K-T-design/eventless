@@ -1,66 +1,68 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return request.auth.uid == userId;
+  
+    // Default deny all reads and writes
+    match /{document=**} {
+      allow read, write: if false;
     }
     
-    function isSuperAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.basicInfo.userType == 'super_admin';
-    }
-    
-    function isCreatingOwnProfile(userId) {
-       return isOwner(userId) && !exists(/databases/$(database)/documents/users/$(userId));
-    }
-
-    // Users Collection
-    // - Anyone can create their own user document upon sign up.
-    // - Users can only read or update their own profile.
-    // - Super Admins can read any user profile.
+    // Users can read their own profile, but can only create it once.
+    // They cannot change their userType or freeEventsUsed after creation.
     match /users/{userId} {
-      allow read: if isOwner(userId) || isSuperAdmin();
-      allow create: if isCreatingOwnProfile(userId);
-      allow update: if isOwner(userId);
-      allow delete: if false; // Nobody can delete user profiles for now
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId
+                    && request.resource.data.basicInfo.userType == resource.data.basicInfo.userType
+                    && request.resource.data.subscription.freeEventsUsed == resource.data.subscription.freeEventsUsed;
     }
 
-    // Events Collection
-    // - Anyone can read 'approved' events.
-    // - Authenticated users can create new events (which default to 'pending' status).
-    // - Organizers can update their own events.
-    // - Admins can read or update any event.
+    // Events can be read by anyone.
+    // Events can only be created by an authenticated user.
+    // The organizerId must match the creator's UID.
+    // Only organizers can approve/reject events (future-proof for admin actions).
     match /events/{eventId} {
-      allow read: if resource.data.status == 'approved' || isOwner(resource.data.organizerId) || isSuperAdmin();
-      allow create: if isSignedIn() && request.resource.data.organizerId == request.auth.uid;
-      allow update: if isOwner(resource.data.organizerId) || isSuperAdmin();
-      
-      // Ticket Tiers Subcollection
-      match /ticketTiers/{tierId} {
-        allow read, write: if isOwner(get(/databases/$(database)/documents/events/$(eventId)).data.organizerId) || isSuperAdmin();
-      }
+      allow read: if true;
+      allow create: if request.auth != null
+                    && request.resource.data.organizerId == request.auth.uid;
+      // Allow updates only by the original organizer or an admin (for status changes)
+      allow update: if request.auth != null && (
+                      resource.data.organizerId == request.auth.uid ||
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.basicInfo.userType == 'super_admin'
+                    );
     }
     
-    // Tickets Collection
-    // - Users can only read their own tickets.
-    // - Users can only create tickets for themselves.
-    match /tickets/{ticketId} {
-        allow read, write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    // Ticket tiers can be read by anyone (as they are part of the public event).
+    // They can only be written as part of a batch with the parent event.
+    match /events/{eventId}/ticketTiers/{tierId} {
+      allow read: if true;
+      allow write: if request.auth != null && get(/databases/$(database)/documents/events/$(eventId)).data.organizerId == request.auth.uid;
     }
 
-    // Transactions Collection
-    // - Users can only read their own transactions.
-    // - Users can only create transactions for themselves.
-     match /transactions/{transactionId} {
-        allow read, write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    // Tickets can only be read by their owner or an admin.
+    // Tickets can only be created by authenticated users.
+    match /tickets/{ticketId} {
+      allow read: if request.auth != null && (
+                    request.auth.uid == resource.data.userId || 
+                    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.basicInfo.userType == 'super_admin'
+                  );
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // Allow updates (e.g., for check-in) by event organizer or admin
+       allow update: if request.auth != null && (
+                     get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.organizerId == request.auth.uid ||
+                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.basicInfo.userType == 'super_admin'
+                   );
+    }
+    
+    // Transactions can only be read by the user who made them.
+    // They can only be created by the user they belong to.
+    match /transactions/{transactionId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
     }
   }
 }
+
+    
