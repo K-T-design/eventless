@@ -6,13 +6,15 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, query, where, onSnapshot, orderBy, Timestamp } from 'firebase/firestore';
 import { auth, firestore } from '@/lib/firebase';
 import type { Ticket } from '@/types';
-import { Loader2, QrCode, Calendar, MapPin, Ticket as TicketIcon } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, QrCode, Calendar, MapPin, Ticket as TicketIcon, Dot } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
 
 export default function MyTicketsPage() {
   const [user, authLoading] = useAuthState(auth);
@@ -21,6 +23,8 @@ export default function MyTicketsPage() {
   const { toast } = useToast();
 
   useEffect(() => {
+    if (authLoading) return;
+
     if (!user) {
       setLoading(false);
       return;
@@ -42,10 +46,10 @@ export default function MyTicketsPage() {
           return {
             id: doc.id,
             ...data,
-            purchaseDate: (data.purchaseDate as Timestamp).toDate(),
+            purchaseDate: (data.purchaseDate as Timestamp)?.toDate(),
             eventDetails: data.eventDetails ? {
               ...data.eventDetails,
-              date: (data.eventDetails.date as Timestamp).toDate(),
+              date: (data.eventDetails.date as Timestamp)?.toDate(),
             } : undefined,
           } as Ticket;
         });
@@ -65,15 +69,15 @@ export default function MyTicketsPage() {
 
     // Cleanup subscription on unmount
     return () => unsubscribe();
-  }, [user, toast]);
+  }, [user, authLoading, toast]);
   
   if (authLoading || loading) {
     return (
         <div className="container mx-auto max-w-4xl py-12 px-4">
             <h1 className="text-4xl font-bold font-headline mb-8">My Tickets</h1>
-             <div className="grid gap-6 md:grid-cols-2">
+             <div className="grid gap-6">
                 {[...Array(4)].map((_, i) => (
-                    <Skeleton key={i} className="h-56 w-full" />
+                    <Skeleton key={i} className="h-24 w-full" />
                 ))}
              </div>
         </div>
@@ -103,48 +107,57 @@ export default function MyTicketsPage() {
       <div className="mb-8">
         <h1 className="text-4xl font-bold font-headline">My Tickets</h1>
         <p className="text-muted-foreground mt-2">
-          Here are all the tickets you've acquired. Use the QR code for event check-in.
+          Here are all the tickets you've acquired. Click one to view the QR code for event check-in.
         </p>
       </div>
       
       {tickets.length > 0 ? (
-        <div className="grid gap-6 md:grid-cols-2">
+        <Accordion type="single" collapsible className="w-full space-y-4">
           {tickets.map(ticket => (
-            <Card key={ticket.id} className="flex flex-col">
-              <CardHeader>
-                <CardTitle>{ticket.eventDetails?.title ?? 'Event Title'}</CardTitle>
-                 <CardDescription>
-                    {ticket.tier.name} Ticket
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex-grow space-y-3">
-                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    <span>{ticket.eventDetails?.date ? format(ticket.eventDetails.date, 'PPP') : 'Date'}</span>
-                </div>
-                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                    <MapPin className="h-4 w-4" />
-                    <span>{ticket.eventDetails?.location ?? 'Location'}</span>
-                </div>
-                 <p className="text-sm text-muted-foreground pt-2">
-                    Ticket ID: {ticket.id}
-                </p>
-              </CardContent>
-              <CardFooter className="flex justify-between items-end bg-muted/50 p-4 mt-4">
-                <div>
-                     <p className="text-xs text-muted-foreground">Status</p>
-                     <p className={`font-bold text-sm ${ticket.status === 'valid' ? 'text-green-600' : 'text-yellow-600'}`}>
-                        {ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)}
-                    </p>
-                </div>
-                 <div className="text-center">
-                    <QrCode className="h-12 w-12 mx-auto text-foreground" />
-                    <p className="text-xs mt-1 text-muted-foreground">Show for check-in</p>
-                </div>
-              </CardFooter>
-            </Card>
+            <AccordionItem key={ticket.id} value={ticket.id} className="border-b-0">
+                 <AccordionTrigger className="p-4 bg-card rounded-lg shadow-sm hover:no-underline hover:shadow-md transition-shadow">
+                     <div className="flex w-full items-start justify-between text-left">
+                        <div>
+                            <h3 className="font-bold text-lg">{ticket.eventDetails?.title ?? 'Event Title'}</h3>
+                            <p className="text-sm text-muted-foreground">{ticket.tier.name} Ticket</p>
+                            <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                                {ticket.eventDetails?.date && <span>{format(ticket.eventDetails.date, 'PP')}</span>}
+                                <Dot />
+                                <span>{ticket.eventDetails?.location ?? 'Location'}</span>
+                            </div>
+                        </div>
+                        <Badge variant={ticket.status === 'valid' ? 'default' : 'secondary'} className="capitalize shrink-0">
+                           {ticket.status}
+                        </Badge>
+                     </div>
+                 </AccordionTrigger>
+                 <AccordionContent className="bg-card rounded-b-lg p-6 border-t">
+                    <div className="flex flex-col items-center text-center">
+                        <div className="mb-6 p-4 bg-white rounded-lg">
+                           <QrCode className="h-48 w-48 text-foreground" />
+                        </div>
+                        <div className="w-full space-y-3 text-sm">
+                             <div className="flex justify-between">
+                                <span className="text-muted-foreground">Ticket ID:</span>
+                                <span className="font-mono">{ticket.id}</span>
+                            </div>
+                            {ticket.purchaseDate && (
+                               <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Purchased on:</span>
+                                    <span>{format(ticket.purchaseDate, 'PPP')}</span>
+                                </div>
+                            )}
+                             <div className="flex justify-between">
+                                <span className="text-muted-foreground">Amount Paid:</span>
+                                <span className="font-bold">₦{(ticket.tier.price).toLocaleString()}</span>
+                            </div>
+                        </div>
+                        <Button className="w-full mt-6" size="lg">Show Fullscreen</Button>
+                    </div>
+                 </AccordionContent>
+            </AccordionItem>
           ))}
-        </div>
+        </Accordion>
       ) : (
         <div className="text-center py-16 border-2 border-dashed rounded-lg">
             <TicketIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
