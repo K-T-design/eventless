@@ -14,6 +14,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -23,6 +30,7 @@ import { Card, CardContent } from "@/components/ui/card";
 export default function UserManagementPage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -132,7 +140,7 @@ export default function UserManagementPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right space-x-2">
-                        <Button size="sm" variant="outline" disabled>View</Button>
+                        <Button size="sm" variant="outline" onClick={() => setSelectedUser(user)}>View</Button>
                         <Button 
                           size="sm" 
                           variant={user.basicInfo.status === 'active' ? 'destructive' : 'secondary'}
@@ -152,6 +160,55 @@ export default function UserManagementPage() {
           )}
         </CardContent>
       </Card>
+
+      {selectedUser && (
+        <Dialog open={!!selectedUser} onOpenChange={(isOpen) => !isOpen && setSelectedUser(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="font-headline text-2xl">{selectedUser.basicInfo.name}</DialogTitle>
+              <DialogDescription>
+                User ID: {selectedUser.id}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4 text-sm">
+                <div className="grid grid-cols-3 items-center gap-4">
+                    <span className="text-muted-foreground">Email</span>
+                    <span className="col-span-2 font-medium">{selectedUser.basicInfo.email}</span>
+                </div>
+                 <div className="grid grid-cols-3 items-center gap-4">
+                    <span className="text-muted-foreground">Phone</span>
+                    <span className="col-span-2 font-medium">{selectedUser.basicInfo.phone}</span>
+                </div>
+                <div className="grid grid-cols-3 items-center gap-4">
+                    <span className="text-muted-foreground">User Type</span>
+                    <span className="col-span-2 font-medium capitalize">{selectedUser.basicInfo.userType.replace('_', ' ')}</span>
+                </div>
+                 <div className="grid grid-cols-3 items-center gap-4">
+                    <span className="text-muted-foreground">Status</span>
+                     <Badge variant={getStatusVariant(selectedUser.basicInfo.status)} className="capitalize w-fit">
+                        {selectedUser.basicInfo.status}
+                      </Badge>
+                </div>
+                 <div className="grid grid-cols-3 items-center gap-4">
+                    <span className="text-muted-foreground">Date Joined</span>
+                    <span className="col-span-2 font-medium">{format(selectedUser.metadata.dateCreated, "PPP")}</span>
+                </div>
+                 {selectedUser.orgInfo && (
+                    <>
+                         <div className="grid grid-cols-3 items-center gap-4">
+                            <span className="text-muted-foreground">Org. Name</span>
+                            <span className="col-span-2 font-medium">{selectedUser.orgInfo.orgName}</span>
+                        </div>
+                        <div className="grid grid-cols-3 items-center gap-4">
+                            <span className="text-muted-foreground">Org. Type</span>
+                            <span className="col-span-2 font-medium">{selectedUser.orgInfo.orgType}</span>
+                        </div>
+                    </>
+                 )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }
