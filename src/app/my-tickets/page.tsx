@@ -6,7 +6,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, query, where, onSnapshot, orderBy, Timestamp } from 'firebase/firestore';
 import { auth, firestore } from '@/lib/firebase';
 import type { Ticket } from '@/types';
-import { Dot } from 'lucide-react';
+import { Dot, Download } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -79,6 +79,31 @@ export default function MyTicketsPage() {
     // Cleanup subscription on unmount
     return () => unsubscribe();
   }, [user, authLoading, toast]);
+
+  const handleDownload = (ticketId: string, eventTitle: string) => {
+    const canvas = document.getElementById(`qr-code-${ticketId}`) as HTMLCanvasElement;
+    if (canvas) {
+      const pngUrl = canvas
+        .toDataURL("image/png")
+        .replace("image/png", "image/octet-stream");
+      let downloadLink = document.createElement("a");
+      downloadLink.href = pngUrl;
+      downloadLink.download = `${eventTitle}-ticket.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+       toast({
+        title: "Download Started",
+        description: "Your ticket QR code is being downloaded.",
+      });
+    } else {
+        toast({
+            variant: "destructive",
+            title: "Download Failed",
+            description: "Could not find the QR code to download.",
+        });
+    }
+  };
   
   if (authLoading || loading) {
     return (
@@ -143,7 +168,7 @@ export default function MyTicketsPage() {
                  <AccordionContent className="bg-card rounded-b-lg p-6 border-t">
                     <div className="flex flex-col items-center text-center">
                         <div className="mb-6 p-4 bg-white rounded-lg shadow-inner">
-                           <QRCodeCanvas value={ticket.qrCodeData} size={200} />
+                           <QRCodeCanvas id={`qr-code-${ticket.id}`} value={ticket.qrCodeData} size={200} />
                         </div>
                         <div className="w-full space-y-3 text-sm">
                              <div className="flex justify-between">
@@ -161,9 +186,15 @@ export default function MyTicketsPage() {
                                 <span className="font-bold">₦{(ticket.tier.price).toLocaleString()}</span>
                             </div>
                         </div>
-                        <Button className="w-full mt-6" size="lg" onClick={() => setSelectedTicket(ticket)}>
-                            Show Fullscreen
-                        </Button>
+                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full mt-6">
+                            <Button size="lg" onClick={() => setSelectedTicket(ticket)}>
+                                Show Fullscreen
+                            </Button>
+                            <Button size="lg" variant="outline" onClick={() => handleDownload(ticket.id, ticket.eventDetails?.title ?? 'event-ticket')}>
+                                <Download className="mr-2" />
+                                Download
+                            </Button>
+                        </div>
                     </div>
                  </AccordionContent>
             </AccordionItem>
