@@ -10,10 +10,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Event } from "@/types";
+import type { Event, TicketTier } from "@/types";
 import { Search, Calendar as CalendarIcon } from "lucide-react";
 import { firestore } from "@/lib/firebase";
-import { collection, getDocs, query, where, Timestamp } from "firebase/firestore";
+import { collection, getDocs, query, where, Timestamp, collectionGroup } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EVENT_CATEGORIES } from "@/lib/categories";
 import { NIGERIAN_UNIVERSITIES } from "@/lib/universities";
@@ -39,14 +39,22 @@ export default function DiscoverPage() {
         const eventsRef = collection(firestore, "events");
         const q = query(eventsRef, where("status", "==", "approved"));
         const eventSnapshot = await getDocs(q);
-        const eventsList = eventSnapshot.docs.map(doc => {
+        
+        const eventsList = await Promise.all(eventSnapshot.docs.map(async (doc) => {
           const data = doc.data();
+          
+          const tiersRef = collection(doc.ref, "ticketTiers");
+          const tiersSnapshot = await getDocs(tiersRef);
+          const ticketTiers = tiersSnapshot.docs.map(tierDoc => tierDoc.data() as TicketTier);
+
           return {
             id: doc.id,
             ...data,
             date: (data.date as Timestamp).toDate(),
+            ticketTiers: ticketTiers,
           } as Event;
-        });
+        }));
+
         setEvents(eventsList);
       } catch (error) {
         console.error("Error fetching approved events: ", error);
@@ -190,5 +198,3 @@ export default function DiscoverPage() {
     </div>
   );
 }
-
-    
