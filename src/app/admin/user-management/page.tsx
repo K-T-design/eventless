@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, query } from "firebase/firestore";
+import { collection, getDocs, query, doc, updateDoc } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
 import type { UserProfile } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -31,9 +31,14 @@ export default function UserManagementPage() {
       const q = query(usersCollection);
       const querySnapshot = await getDocs(q);
       const usersList = querySnapshot.docs.map((doc) => {
+        const data = doc.data();
         return {
           id: doc.id,
-          ...doc.data(),
+          ...data,
+          metadata: {
+            ...data.metadata,
+            dateCreated: data.metadata.dateCreated.toDate(),
+          }
         } as UserProfile;
       });
       setUsers(usersList);
@@ -52,6 +57,27 @@ export default function UserManagementPage() {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  const handleUserStatusChange = async (userId: string, currentStatus: 'active' | 'suspended') => {
+    const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
+    try {
+      const userRef = doc(firestore, "users", userId);
+      await updateDoc(userRef, { "basicInfo.status": newStatus });
+      toast({
+        title: "Success",
+        description: `User has been ${newStatus}.`,
+      });
+      // Refresh the list after update by changing local state
+      setUsers(users.map(u => u.id === userId ? { ...u, basicInfo: { ...u.basicInfo, status: newStatus } } : u));
+    } catch (error) {
+       console.error(`Error updating user ${userId}: `, error);
+       toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Could not update the user's status.`,
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -98,7 +124,7 @@ export default function UserManagementPage() {
                     <TableCell>{user.basicInfo.email}</TableCell>
                     <TableCell className="capitalize">{user.basicInfo.userType.replace('_', ' ')}</TableCell>
                     <TableCell>
-                      {format(user.metadata.dateCreated.toDate(), "PPP")}
+                      {format(user.metadata.dateCreated, "PPP")}
                     </TableCell>
                     <TableCell>
                       <Badge variant={getStatusVariant(user.basicInfo.status)} className="capitalize">
@@ -106,8 +132,14 @@ export default function UserManagementPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right space-x-2">
-                        <Button size="sm" variant="outline">View</Button>
-                        <Button size="sm" variant="destructive">Suspend</Button>
+                        <Button size="sm" variant="outline" disabled>View</Button>
+                        <Button 
+                          size="sm" 
+                          variant={user.basicInfo.status === 'active' ? 'destructive' : 'secondary'}
+                          onClick={() => handleUserStatusChange(user.id, user.basicInfo.status)}
+                        >
+                           {user.basicInfo.status === 'active' ? 'Suspend' : 'Unsuspend'}
+                        </Button>
                     </TableCell>
                   </TableRow>
                 ))}

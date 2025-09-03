@@ -22,7 +22,7 @@ export type Event = {
   description: string;
   status: 'pending' | 'approved' | 'rejected';
   organizerId: string;
-  createdAt: Timestamp;
+  createdAt: Date;
 };
 
 export type UserType = 'individual' | 'organizer' | 'super_admin';
@@ -54,7 +54,7 @@ export interface UserProfile {
     };
   };
   metadata: {
-    dateCreated: Timestamp;
+    dateCreated: Date;
     lastLogin: Timestamp;
   };
 }
