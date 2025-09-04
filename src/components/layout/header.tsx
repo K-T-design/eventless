@@ -127,7 +127,7 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-card shadow-sm">
       <div className="container mx-auto flex h-16 items-center px-4 md:px-6">
         <Link href="/" className="flex items-center gap-2 font-bold font-headline text-lg">
-          <Image src="/logo.gif" alt="E-Ventless Logo" width={40} height={40} className="rounded-full" />
+          <Image src="https://ik.imagekit.io/t48u898g8/eventless_logo-removebg-preview%20(2).png?updatedAt=1757007814945" alt="E-Ventless Logo" width={40} height={40} className="rounded-full" />
           <span>E-Ventless</span>
         </Link>
         <nav className="hidden md:flex gap-6 items-center mx-auto">
