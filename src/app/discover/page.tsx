@@ -87,9 +87,8 @@ export default function DiscoverPage() {
   }, [events, searchTerm, selectedUniversity, selectedCategory, date]);
   
   const universities = useMemo(() => {
-    const uniqueUniversities = [...new Set(events.map(event => event.university))];
-    return uniqueUniversities.length > 0 ? uniqueUniversities.sort() : NIGERIAN_UNIVERSITIES.sort();
-  }, [events]);
+    return [...NIGERIAN_UNIVERSITIES].sort();
+  }, []);
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
