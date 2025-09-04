@@ -3,7 +3,7 @@ export const NIGERIAN_BANKS = [
     { "name": "Access Bank", "code": "044" },
     { "name": "Citibank", "code": "023" },
     { "name": "Ecobank Nigeria", "code": "050" },
-    { "name": "Fidelity Bank",_code": "070" },
+    { "name": "Fidelity Bank", "code": "070" },
     { "name": "First Bank of Nigeria", "code": "011" },
     { "name": "First City Monument Bank", "code": "214" },
     { "name": "Globus Bank", "code": "103" },
@@ -31,3 +31,4 @@ export const NIGERIAN_BANKS = [
     { "name": "Wema Bank", "code": "035" },
     { "name": "Zenith Bank", "code": "057" }
 ];
+
