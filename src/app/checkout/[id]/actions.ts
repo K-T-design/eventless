@@ -4,7 +4,7 @@
 import { firestore } from '@/lib/firebase-admin';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import type { Ticket, Transaction, TicketTier, Event, UserProfile } from '@/types';
-import { sendEmail } from '@/lib/email';
+import { sendTicketEmail } from '@/lib/email';
 import { format } from 'date-fns';
 
 type VerifyPaymentInput = {
@@ -17,34 +17,24 @@ type VerifyPaymentInput = {
 
 const SERVICE_FEE = 150;
 
-async function sendTicketConfirmationEmail(user: UserProfile['basicInfo'], event: Event, ticket: Omit<Ticket, 'id'>, quantity: number) {
-  const subject = `Your Ticket for ${event.title}!`;
-  const html = `
-    <h1>Thank you for your purchase!</h1>
-    <p>Hi ${user.name},</p>
-    <p>You have successfully acquired ${quantity} ticket(s) for the event: <strong>${event.title}</strong>.</p>
-    <h2>Event Details:</h2>
-    <ul>
-      <li><strong>Event:</strong> ${event.title}</li>
-      <li><strong>Date:</strong> ${format(event.date, 'PPP')}</li>
-      <li><strong>Time:</strong> ${event.time}</li>
-      <li><strong>Location:</strong> ${event.location}</li>
-    </ul>
-    <h2>Ticket Details:</h2>
-    <ul>
-      <li><strong>Tier:</strong> ${ticket.tier.name}</li>
-      <li><strong>Quantity:</strong> ${quantity}</li>
-      <li><strong>Price per ticket:</strong> ₦${ticket.tier.price.toLocaleString()}</li>
-    </ul>
-    <p>You can view your ticket and QR code in the "My Tickets" section of your account.</p>
-    <p>We look forward to seeing you there!</p>
-  `;
-
-  await sendEmail({
-    to: user.email,
-    subject,
-    html,
-  });
+async function createAndSendTicket(
+    event: Event, 
+    user: UserProfile, 
+    ticketData: Omit<Ticket, 'id'>, 
+    quantity: number
+) {
+  try {
+    await sendTicketEmail(
+        user.basicInfo.email,
+        user.basicInfo.name,
+        event.title,
+        ticketData.qrCodeData.split(':')[1] // Extract ticket ID from QR data
+    );
+  } catch (emailError) {
+      console.error(`Failed to send ticket email for user ${user.id}`, emailError);
+      // We don't throw an error here because the purchase was successful.
+      // We should log this for monitoring.
+  }
 }
 
 export async function verifyPaymentAndCreateTicket(
@@ -105,9 +95,9 @@ export async function verifyPaymentAndCreateTicket(
     const userData = userSnap.data() as UserProfile;
     
     let firstTicketData: Omit<Ticket, 'id'> | null = null;
+    let createdTicketIds: string[] = [];
     
     await firestore.runTransaction(async (transaction) => {
-        const ticketIds: string[] = [];
         const ticketRevenue = tier.price * quantity;
         
         for (let i = 0; i < quantity; i++) {
@@ -129,7 +119,7 @@ export async function verifyPaymentAndCreateTicket(
                 },
             };
             transaction.set(ticketRef, newTicket);
-            ticketIds.push(ticketRef.id);
+            createdTicketIds.push(ticketRef.id);
 
             if (i === 0) {
               firstTicketData = newTicket;
@@ -139,12 +129,12 @@ export async function verifyPaymentAndCreateTicket(
         const transactionRef = firestore.collection('transactions').doc();
         const newTransaction: Omit<Transaction, 'id'> = {
             userId: userId,
-            ticketId: ticketIds.join(','),
+            ticketId: createdTicketIds.join(','),
             amount: transactionAmount,
             status: 'succeeded',
             paymentGateway: isFreeTicket ? 'free' : 'paystack',
             transactionDate: FieldValue.serverTimestamp() as Timestamp,
-            reference: isFreeTicket ? `free-${ticketIds[0]}` : reference,
+            reference: isFreeTicket ? `free-${createdTicketIds[0]}` : reference,
         };
         transaction.set(transactionRef, newTransaction);
         
@@ -158,7 +148,7 @@ export async function verifyPaymentAndCreateTicket(
 
     // Send email after transaction is committed
     if(firstTicketData) {
-      await sendTicketConfirmationEmail(userData.basicInfo, eventData, firstTicketData, quantity);
+      await createAndSendTicket({ ...eventData, id: eventId }, { ...userData, id: userId }, firstTicketData, quantity);
     }
 
     return { success: true, message: `Successfully created ${quantity} ticket(s)! A confirmation email has been sent.` };
