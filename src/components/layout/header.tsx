@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ticket, LogOut, LogIn, LayoutDashboard, User, QrCode } from "lucide-react";
+import { Ticket, LogOut, LogIn, LayoutDashboard, User, QrCode, ClipboardList } from "lucide-react";
 import { auth, firestore } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -77,6 +77,12 @@ function AuthButtons() {
                     </Link>
                   </DropdownMenuItem>
               )}
+               <DropdownMenuItem asChild>
+                 <Link href="/organizer/dashboard">
+                    <ClipboardList className="mr-2 h-4 w-4" />
+                    Organizer Dashboard
+                </Link>
+              </DropdownMenuItem>
                <DropdownMenuItem asChild>
                 <Link href="/my-tickets">
                   <Ticket className="mr-2 h-4 w-4" />
