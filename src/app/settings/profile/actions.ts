@@ -2,7 +2,8 @@
 'use server';
 
 import { doc, updateDoc, Timestamp } from "firebase/firestore";
-import { firestore } from "@/lib/firebase-admin"; // Use admin SDK for security on backend operations
+import { firestore as adminFirestore } from "@/lib/firebase-admin"; // Use admin SDK for security on backend operations
+import { firestore as clientFirestore } from "@/lib/firebase"; // Use client for profile updates not requiring admin
 import { revalidatePath } from "next/cache";
 
 type ProfileDetails = {
@@ -12,7 +13,7 @@ type ProfileDetails = {
 
 export async function updateProfileDetails(userId: string, details: ProfileDetails) {
   try {
-    const userRef = doc(firestore, "users", userId);
+    const userRef = doc(clientFirestore, "users", userId);
    
     await updateDoc(userRef, { 
       "basicInfo.name": details.name,
@@ -54,13 +55,13 @@ export async function updateUserSubscription(userId: string, details: Subscripti
             throw new Error(data.message || 'Payment verification failed.');
         }
 
-        // 2. Update user document in Firestore
-        const userRef = doc(firestore, "users", userId);
+        // 2. Update user document in Firestore using the Admin SDK
+        const userRef = adminFirestore.collection("users").doc(userId);
         
         const now = new Date();
         const expiryDate = new Date(now.setDate(now.getDate() + details.durationDays));
 
-        await updateDoc(userRef, {
+        await userRef.update({
             "subscription.status": "active",
             "subscription.planType": details.planType,
             "subscription.expiryDate": Timestamp.fromDate(expiryDate),
