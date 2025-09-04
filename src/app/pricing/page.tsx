@@ -185,9 +185,10 @@ export default function PricingPage() {
                     reference={new Date().getTime().toString()}
                     onSuccess={(res) => handleSubscriptionSuccess(res.reference, tier.planType, tier.durationDays)}
                     onClose={handleClose}
-                    disabled={!user || !!processingPlan}
+                    disabled={!user || !!processingPlan || !paystackPublicKey}
+                    publicKey={paystackPublicKey}
                  >
-                    <Button className="w-full" variant={tier.variant as "default" | "secondary"} disabled={!user || !!processingPlan}>
+                    <Button className="w-full" variant={tier.variant as "default" | "secondary"} disabled={!user || !!processingPlan || !paystackPublicKey}>
                         {processingPlan === tier.planType ? <Loader2 className="animate-spin"/> : tier.cta}
                     </Button>
                  </PaystackButton>

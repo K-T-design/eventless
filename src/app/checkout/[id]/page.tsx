@@ -309,7 +309,7 @@ function CheckoutContent({ params }: { params: { id: string } }) {
               onSuccess={(res) => handlePurchase(res.reference)}
               onClose={handlePaystackClose}
             >
-              <Button size="lg" className="w-full" disabled={processing || authLoading || !user}>
+              <Button size="lg" className="w-full" disabled={processing || authLoading || !user || !paystackPublicKey}>
                 {processing ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
