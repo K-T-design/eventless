@@ -64,7 +64,7 @@ const tiers = [
     ],
     cta: "Choose Plan",
     variant: "secondary",
-    planCode: "PLAN_CODE_YEARLY", // Placeholder
+    planCode: "PLN_c5qjp91xly1w54b",
   },
 ];
 
