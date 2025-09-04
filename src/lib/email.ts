@@ -8,34 +8,38 @@ type EmailOptions = {
 };
 
 export const sendEmail = async (options: EmailOptions) => {
-  if (!process.env.ELASTIC_EMAIL_API_KEY || !process.env.ELASTIC_EMAIL_FROM_EMAIL) {
-    const errorMessage = 'Elastic Email API key or From Email is not configured.';
+  if (!process.env.BREVO_API_KEY || !process.env.BREVO_FROM_EMAIL) {
+    const errorMessage = 'Brevo API key or From Email is not configured.';
     console.error(errorMessage);
     return { success: false, message: errorMessage };
   }
 
-  const formData = new URLSearchParams();
-  formData.append('apikey', process.env.ELASTIC_EMAIL_API_KEY);
-  formData.append('subject', options.subject);
-  formData.append('from', process.env.ELASTIC_EMAIL_FROM_EMAIL);
-  formData.append('to', options.to);
-  formData.append('bodyHtml', options.html);
-  formData.append('isTransactional', 'true');
-
+  const emailData = {
+    sender: { email: process.env.BREVO_FROM_EMAIL },
+    to: [{ email: options.to }],
+    subject: options.subject,
+    htmlContent: options.html,
+  };
 
   try {
-    const response = await fetch('https://api.elasticemail.com/v2/email/send', {
-        method: 'POST',
-        body: formData,
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'api-key': process.env.BREVO_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(emailData),
     });
-    
-    const result = await response.json();
 
-    if (!result.success) {
-      throw new Error(result.error || 'Unknown error from Elastic Email API');
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Brevo API Error: ${response.statusText} - ${JSON.stringify(errorData)}`);
     }
+    
+    await response.json();
 
-    console.log('Transactional email sent successfully.');
+    console.log('Transactional email sent successfully via Brevo.');
     return { success: true };
   } catch (error: any) {
     console.error('Error sending transactional email:', error);

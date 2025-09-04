@@ -104,12 +104,12 @@ export async function verifyPaymentAndCreateTicket(
     }
     const userData = userSnap.data() as UserProfile;
     
+    let firstTicketData: Omit<Ticket, 'id'> | null = null;
+    
     await firestore.runTransaction(async (transaction) => {
         const ticketIds: string[] = [];
         const ticketRevenue = tier.price * quantity;
         
-        let firstTicketData: Omit<Ticket, 'id'> | null = null;
-
         for (let i = 0; i < quantity; i++) {
             const ticketRef = firestore.collection('tickets').doc();
             const qrCodeData = `eventless-ticket:${ticketRef.id}`;
@@ -154,12 +154,12 @@ export async function verifyPaymentAndCreateTicket(
                 'payouts.status': 'pending'
             });
         }
-        
-        // Send email after transaction is committed
-        if(firstTicketData) {
-          await sendTicketConfirmationEmail(userData.basicInfo, eventData, firstTicketData, quantity);
-        }
     });
+
+    // Send email after transaction is committed
+    if(firstTicketData) {
+      await sendTicketConfirmationEmail(userData.basicInfo, eventData, firstTicketData, quantity);
+    }
 
     return { success: true, message: `Successfully created ${quantity} ticket(s)! A confirmation email has been sent.` };
 
