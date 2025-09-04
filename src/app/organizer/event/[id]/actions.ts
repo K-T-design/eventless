@@ -44,25 +44,34 @@ export async function getEventDetailsForOrganizer(eventId: string, organizerId: 
       id: eventSnap.id,
       ...eventSnap.data(),
       date: eventSnap.data().date.toDate(),
+      createdAt: eventSnap.data().createdAt.toDate(),
     } as Event;
 
     if (event.organizerId !== organizerId) {
       throw new Error("You are not authorized to view this event's details.");
     }
 
-    // 2. Fetch all tickets for the event
-    const ticketsRef = collection(firestore, 'tickets');
-    const ticketsQuery = query(ticketsRef, where('eventId', '==', eventId), orderBy('purchaseDate', 'desc'));
+    // 2. Fetch all tickets for the event from its subcollection
+    const ticketsRef = collection(firestore, 'events', eventId, 'tickets');
+    const ticketsQuery = query(ticketsRef, orderBy('purchaseDate', 'desc'));
     const ticketsSnapshot = await getDocs(ticketsQuery);
 
-    const tickets = ticketsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ticket));
+    const tickets = ticketsSnapshot.docs.map(doc => {
+        const data = doc.data()
+        return { 
+            id: doc.id, 
+            ...data,
+            // Ensure purchaseDate is a JS Date object
+            purchaseDate: data.purchaseDate?.toDate ? data.purchaseDate.toDate() : new Date(),
+        } as Ticket
+    });
     
     // 3. Fetch user profiles for all attendees to get names/emails
-    const userIds = [...new Set(tickets.map(t => t.userId))];
+    const userIds = [...new Set(tickets.map(t => t.userId))].filter(id => id);
     const attendees: Attendee[] = [];
     
     if (userIds.length > 0) {
-        // Firestore 'in' query is limited to 30 items. If more, we'd need to batch.
+        // Firestore 'in' query is limited to 30 items. For larger attendee lists, batching would be required.
         const usersRef = collection(firestore, 'users');
         const usersQuery = query(usersRef, where('__name__', 'in', userIds));
         const usersSnapshot = await getDocs(usersQuery);
@@ -85,7 +94,7 @@ export async function getEventDetailsForOrganizer(eventId: string, organizerId: 
 
     // 4. Calculate stats
     const ticketsSold = tickets.length;
-    const totalRevenue = tickets.reduce((sum, ticket) => sum + ticket.tier.price, 0);
+    const totalRevenue = tickets.reduce((sum, ticket) => sum + (ticket.tier?.price || 0), 0);
 
     return {
       event,
