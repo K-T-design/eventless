@@ -2,7 +2,8 @@
 'use server';
 
 import { firestore } from '@/lib/firebase-admin';
-import type { UserProfile } from '@/types';
+import type { UserProfile, Payout } from '@/types';
+import { FieldValue } from 'firebase-admin/firestore';
 
 export type OrganizerPayout = {
   organizerId: string;
@@ -19,7 +20,6 @@ export async function getPendingPayouts(): Promise<{
   try {
     const payouts: OrganizerPayout[] = [];
     
-    // Simple query to get all organizers with a pending balance.
     const usersSnapshot = await firestore
       .collection('users')
       .where('basicInfo.userType', '==', 'organizer')
@@ -50,4 +50,41 @@ export async function getPendingPayouts(): Promise<{
       message: error.message || 'Failed to fetch payout data.',
     };
   }
+}
+
+export async function markPayoutAsPaid(input: { organizerId: string; amount: number }): Promise<{ success: boolean; message?: string }> {
+    const { organizerId, amount } = input;
+    const batch = firestore.batch();
+    
+    try {
+        const userRef = firestore.collection('users').doc(organizerId);
+        const payoutRef = firestore.collection('payouts').doc();
+
+        const newPayout: Payout = {
+            organizerId: organizerId,
+            amount: amount,
+            payoutDate: FieldValue.serverTimestamp(),
+            status: 'completed',
+            // In a real app, you might include the admin's ID who initiated this.
+            processedBy: 'admin', 
+        };
+
+        batch.set(payoutRef, newPayout);
+        
+        batch.update(userRef, {
+            'orgInfo.payouts.balance': FieldValue.increment(-amount),
+            'orgInfo.payouts.lastPayoutDate': FieldValue.serverTimestamp(),
+            'orgInfo.payouts.status': 'paid'
+        });
+
+        await batch.commit();
+
+        return { success: true, message: 'Payout successfully recorded.' };
+    } catch (error: any) {
+        console.error('Error marking payout as paid:', error);
+        return {
+            success: false,
+            message: error.message || 'Failed to record the payout.',
+        };
+    }
 }

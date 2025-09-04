@@ -77,7 +77,7 @@ export type Ticket = {
         title: string;
         date: Date; // Changed to Date
         location: string;
-        organizerId: string; // Added for payout calculation
+        organizerId: string;
     }
 }
 
@@ -91,6 +91,14 @@ export type Transaction = {
     transactionDate: Timestamp;
     // Paystack specific reference
     reference: string;
+}
+
+export type Payout = {
+    organizerId: string;
+    amount: number;
+    payoutDate: Timestamp;
+    status: 'completed' | 'failed';
+    processedBy: string; // Admin User ID
 }
 
 export type OrganizerPayout = {

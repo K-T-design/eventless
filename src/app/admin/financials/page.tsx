@@ -12,7 +12,18 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import type { OrganizerPayout } from "./payouts.actions";
-import { getPendingPayouts } from "./payouts.actions";
+import { getPendingPayouts, markPayoutAsPaid } from "./payouts.actions";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 type ChartData = { month: string; revenue: number };
 
@@ -29,43 +40,68 @@ export default function FinancialsPage() {
   const [loading, setLoading] = useState(true);
   const [payoutsLoading, setPayoutsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isPayingOut, setIsPayingOut] = useState<string | null>(null); // Track which payout is processing
+
+  const fetchChartData = async () => {
+    setLoading(true);
+    setError(null);
+    const result = await getMonthlyRevenue();
+    if (result.success && result.data) {
+      setChartData(result.data);
+    } else {
+      setError(result.message || "An unknown error occurred.");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: result.message || "Could not load financial data."
+      });
+    }
+    setLoading(false);
+  };
+
+  const fetchPayouts = async () => {
+    setPayoutsLoading(true);
+    const result = await getPendingPayouts();
+    if (result.success && result.data) {
+      setPayouts(result.data);
+    } else {
+        toast({
+        variant: "destructive",
+        title: "Error fetching payouts",
+        description: result.message || "Could not load payout data."
+      });
+    }
+    setPayoutsLoading(false);
+  }
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-      const result = await getMonthlyRevenue();
-      if (result.success && result.data) {
-        setChartData(result.data);
-      } else {
-        setError(result.message || "An unknown error occurred.");
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: result.message || "Could not load financial data."
-        });
-      }
-      setLoading(false);
-    };
-
-    const fetchPayouts = async () => {
-      setPayoutsLoading(true);
-      const result = await getPendingPayouts();
-      if (result.success && result.data) {
-        setPayouts(result.data);
-      } else {
-         toast({
-          variant: "destructive",
-          title: "Error fetching payouts",
-          description: result.message || "Could not load payout data."
-        });
-      }
-      setPayoutsLoading(false);
-    }
-
-    fetchData();
+    fetchChartData();
     fetchPayouts();
   }, []);
+
+  const handleMarkAsPaid = async (payout: OrganizerPayout) => {
+    setIsPayingOut(payout.organizerId);
+    const result = await markPayoutAsPaid({
+      organizerId: payout.organizerId,
+      amount: payout.payoutDue,
+    });
+    
+    if (result.success) {
+      toast({
+        title: "Payout Recorded",
+        description: `${payout.organizerName} has been marked as paid.`,
+      });
+      // Refresh data
+      fetchPayouts();
+    } else {
+       toast({
+        variant: "destructive",
+        title: "Payout Failed",
+        description: result.message,
+      });
+    }
+    setIsPayingOut(null);
+  };
 
   return (
     <>
@@ -113,7 +149,7 @@ export default function FinancialsPage() {
          <Card>
             <CardHeader>
                 <CardTitle>Pending Payouts</CardTitle>
-                <CardDescription>A list of organizers with a balance owed. Payouts are handled manually for now.</CardDescription>
+                <CardDescription>A list of organizers with a balance owed. Click "Mark as Paid" after sending funds.</CardDescription>
             </CardHeader>
             <CardContent>
                 {payoutsLoading ? (
@@ -146,9 +182,32 @@ export default function FinancialsPage() {
                           </TableCell>
                           <TableCell className="text-right font-semibold">₦{payout.payoutDue.toLocaleString()}</TableCell>
                           <TableCell className="text-right">
-                            <Button variant="outline" size="sm" disabled>
-                              Mark as Paid
-                            </Button>
+                             <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  disabled={isPayingOut === payout.organizerId || !payout.bankDetails?.accountNumber}
+                                >
+                                  {isPayingOut === payout.organizerId && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                  Mark as Paid
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Confirm Payout</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Have you transferred <strong>₦{payout.payoutDue.toLocaleString()}</strong> to <strong>{payout.organizerName}</strong>? This action will record the payout and reset their balance. It cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleMarkAsPaid(payout)}>
+                                    Yes, I have paid
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </TableCell>
                         </TableRow>
                       ))}
