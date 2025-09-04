@@ -113,8 +113,8 @@ export default function SignUpPage() {
             lastPayoutDate: null,
         },
         metadata: {
-          dateCreated: serverTimestamp(),
-          lastLogin: serverTimestamp(),
+          dateCreated: serverTimestamp() as any,
+          lastLogin: serverTimestamp() as any,
         },
       };
 

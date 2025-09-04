@@ -31,4 +31,3 @@ export const NIGERIAN_BANKS = [
     { "name": "Wema Bank", "code": "035" },
     { "name": "Zenith Bank", "code": "057" }
 ];
-

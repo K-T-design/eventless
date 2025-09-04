@@ -92,7 +92,7 @@ export async function verifyPaymentAndCreateTicket(
                 tier: tier,
                 eventDetails: {
                   title: eventData.title,
-                  date: eventData.date, // This is already a Firestore Timestamp from the source
+                  date: eventData.date as any, // This is already a Firestore Timestamp from the source
                   location: eventData.location,
                   organizerId: eventData.organizerId,
                 },

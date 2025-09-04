@@ -31,7 +31,7 @@ export async function getPendingPayouts(): Promise<{
 
     usersSnapshot.forEach((doc) => {
       const user = doc.data() as UserProfile;
-      if (user.payouts) {
+      if (user.payouts && user.basicInfo) {
         payouts.push({
             organizerId: doc.id,
             organizerName: user.basicInfo.name,
