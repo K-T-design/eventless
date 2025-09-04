@@ -2,8 +2,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, doc, updateDoc } from "firebase/firestore";
-import { firestore } from "@/lib/firebase";
 import type { UserProfile } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,31 +23,24 @@ import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { getUsers, updateUserStatus } from "./actions";
+
+const PAGE_SIZE = 15;
 
 export default function UserManagementPage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (page: number) => {
     setLoading(true);
     try {
-      const usersCollection = collection(firestore, "users");
-      const q = query(usersCollection);
-      const querySnapshot = await getDocs(q);
-      const usersList = querySnapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          metadata: {
-            ...data.metadata,
-            dateCreated: data.metadata.dateCreated.toDate(),
-          }
-        } as UserProfile;
-      });
-      setUsers(usersList);
+      const { users: fetchedUsers, totalCount } = await getUsers(page, PAGE_SIZE);
+      setUsers(fetchedUsers);
+      setTotalUsers(totalCount);
     } catch (error) {
       console.error("Error fetching users: ", error);
       toast({
@@ -63,31 +54,31 @@ export default function UserManagementPage() {
   };
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    fetchUsers(currentPage);
+  }, [currentPage]);
 
   const handleUserStatusChange = async (userId: string, currentStatus: 'active' | 'suspended') => {
-    const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
-    try {
-      const userRef = doc(firestore, "users", userId);
-      await updateDoc(userRef, { "basicInfo.status": newStatus });
+    const result = await updateUserStatus(userId, currentStatus);
+    if(result.success) {
       toast({
         title: "Success",
-        description: `User has been ${newStatus}.`,
+        description: result.message,
       });
       // Refresh the list after update by changing local state
-      setUsers(users.map(u => u.id === userId ? { ...u, basicInfo: { ...u.basicInfo, status: newStatus } } : u));
-    } catch (error) {
-       console.error(`Error updating user ${userId}: `, error);
+      setUsers(users.map(u => u.id === userId ? { ...u, basicInfo: { ...u.basicInfo, status: result.newStatus } } : u));
+      fetchUsers(currentPage); // Refetch current page
+    } else {
        toast({
         variant: "destructive",
         title: "Error",
-        description: `Could not update the user's status.`,
+        description: result.message,
       });
     }
   };
 
-  if (loading) {
+  const totalPages = Math.ceil(totalUsers / PAGE_SIZE);
+
+  if (loading && users.length === 0) {
     return (
       <div className="flex justify-center items-center h-full">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -159,6 +150,29 @@ export default function UserManagementPage() {
             </div>
           )}
         </CardContent>
+        <CardFooter className="flex items-center justify-between py-4">
+             <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+             </span>
+            <div className="flex gap-2">
+                 <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                >
+                    Previous
+                </Button>
+                 <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => prev + 1)}
+                    disabled={currentPage >= totalPages}
+                >
+                    Next
+                </Button>
+            </div>
+        </CardFooter>
       </Card>
 
       {selectedUser && (
