@@ -1,6 +1,8 @@
 
 'use server';
 
+import * as brevo from '@getbrevo/brevo';
+
 type EmailOptions = {
   to: string;
   subject: string;
@@ -14,35 +16,23 @@ export const sendEmail = async (options: EmailOptions) => {
     return { success: false, message: errorMessage };
   }
 
-  const emailData = {
-    sender: { email: process.env.BREVO_FROM_EMAIL },
-    to: [{ email: options.to }],
-    subject: options.subject,
-    htmlContent: options.html,
-  };
+  const apiInstance = new brevo.TransactionalEmailsApi();
+  apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
+
+  const sendSmtpEmail = new brevo.SendSmtpEmail();
+  sendSmtpEmail.subject = options.subject;
+  sendSmtpEmail.htmlContent = options.html;
+  sendSmtpEmail.sender = { email: process.env.BREVO_FROM_EMAIL, name: 'E-Ventless' };
+  sendSmtpEmail.to = [{ email: options.to }];
 
   try {
-    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'api-key': process.env.BREVO_API_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(emailData),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`Brevo API Error: ${response.statusText} - ${JSON.stringify(errorData)}`);
-    }
-    
-    await response.json();
-
+    await apiInstance.sendTransacEmail(sendSmtpEmail);
     console.log('Transactional email sent successfully via Brevo.');
     return { success: true };
   } catch (error: any) {
-    console.error('Error sending transactional email:', error);
-    return { success: false, message: `Failed to send email: ${error.message}` };
+    console.error('Error sending transactional email:', error.message);
+    // Brevo's SDK might throw errors with a 'body' property containing more details
+    const errorDetails = error.body ? JSON.stringify(error.body) : error.message;
+    return { success: false, message: `Failed to send email: ${errorDetails}` };
   }
 };
