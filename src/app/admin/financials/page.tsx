@@ -11,8 +11,8 @@ import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import type { OrganizerPayout } from "./payouts.actions";
-import { getPendingPayouts, markPayoutAsPaid } from "./payouts.actions";
+import type { OrganizerPayout, Payout } from "@/types";
+import { getPendingPayouts, markPayoutAsPaid, getPayoutHistory } from "./payouts.actions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,8 +22,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { format } from "date-fns";
 
 type ChartData = { month: string; revenue: number };
 
@@ -37,11 +37,19 @@ const chartConfig = {
 export default function FinancialsPage() {
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [payouts, setPayouts] = useState<OrganizerPayout[]>([]);
+  const [payoutHistory, setPayoutHistory] = useState<Payout[]>([]);
   const [loading, setLoading] = useState(true);
   const [payoutsLoading, setPayoutsLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isPayingOut, setIsPayingOut] = useState<string | null>(null); // Track which payout is processing
+  const [isPayingOut, setIsPayingOut] = useState<string | null>(null);
 
+  const fetchAllData = () => {
+    fetchChartData();
+    fetchPayouts();
+    fetchHistory();
+  };
+  
   const fetchChartData = async () => {
     setLoading(true);
     setError(null);
@@ -74,9 +82,23 @@ export default function FinancialsPage() {
     setPayoutsLoading(false);
   }
 
+  const fetchHistory = async () => {
+    setHistoryLoading(true);
+    const result = await getPayoutHistory();
+    if (result.success && result.data) {
+        setPayoutHistory(result.data);
+    } else {
+         toast({
+            variant: "destructive",
+            title: "Error fetching history",
+            description: result.message || "Could not load payout history."
+        });
+    }
+    setHistoryLoading(false);
+  }
+
   useEffect(() => {
-    fetchChartData();
-    fetchPayouts();
+    fetchAllData();
   }, []);
 
   const handleMarkAsPaid = async (payout: OrganizerPayout) => {
@@ -92,7 +114,7 @@ export default function FinancialsPage() {
         description: `${payout.organizerName} has been marked as paid.`,
       });
       // Refresh data
-      fetchPayouts();
+      fetchAllData();
     } else {
        toast({
         variant: "destructive",
@@ -220,7 +242,47 @@ export default function FinancialsPage() {
                 )}
             </CardContent>
         </Card>
+        
+        <Card>
+            <CardHeader>
+                <CardTitle>Payout History</CardTitle>
+                <CardDescription>A log of all past payouts sent to organizers.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                 {historyLoading ? (
+                    <div className="flex items-center justify-center min-h-[200px]">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                ) : payoutHistory.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Organizer</TableHead>
+                        <TableHead className="text-right">Amount Paid</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {payoutHistory.map((payout) => (
+                        <TableRow key={payout.id}>
+                          <TableCell>{format(payout.payoutDate, 'PPp')}</TableCell>
+                          <TableCell>{payout.organizerName}</TableCell>
+                          <TableCell className="text-right font-semibold">₦{payout.amount.toLocaleString()}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                   <div className="text-center py-12 border-2 border-dashed rounded-lg bg-card">
+                      <p className="text-muted-foreground">No payout history found.</p>
+                  </div>
+                )}
+            </CardContent>
+        </Card>
+
       </div>
     </>
   );
 }
+
+    

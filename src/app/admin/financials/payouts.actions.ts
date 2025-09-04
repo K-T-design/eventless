@@ -3,7 +3,7 @@
 
 import { firestore } from '@/lib/firebase-admin';
 import type { UserProfile, Payout } from '@/types';
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 export type OrganizerPayout = {
   organizerId: string;
@@ -60,12 +60,16 @@ export async function markPayoutAsPaid(input: { organizerId: string; amount: num
         const userRef = firestore.collection('users').doc(organizerId);
         const payoutRef = firestore.collection('payouts').doc();
 
-        const newPayout: Payout = {
+        const userSnap = await userRef.get();
+        if (!userSnap.exists) throw new Error("Organizer not found.");
+        const userData = userSnap.data() as UserProfile;
+
+        const newPayout: Omit<Payout, 'id'> = {
             organizerId: organizerId,
+            organizerName: userData.basicInfo.name,
             amount: amount,
-            payoutDate: FieldValue.serverTimestamp(),
+            payoutDate: FieldValue.serverTimestamp() as Timestamp,
             status: 'completed',
-            // In a real app, you might include the admin's ID who initiated this.
             processedBy: 'admin', 
         };
 
@@ -88,3 +92,36 @@ export async function markPayoutAsPaid(input: { organizerId: string; amount: num
         };
     }
 }
+
+export async function getPayoutHistory(): Promise<{
+  success: boolean;
+  data?: Payout[];
+  message?: string;
+}> {
+  try {
+    const historySnapshot = await firestore.collection('payouts').orderBy('payoutDate', 'desc').limit(50).get();
+
+    if (historySnapshot.empty) {
+      return { success: true, data: [] };
+    }
+
+    const history = historySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            payoutDate: (data.payoutDate as Timestamp).toDate(),
+        } as Payout;
+    })
+
+    return { success: true, data: history };
+  } catch (error: any) {
+     console.error('Error fetching payout history: ', error);
+    return {
+      success: false,
+      message: error.message || 'Failed to fetch payout history.',
+    };
+  }
+}
+
+    

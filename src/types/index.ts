@@ -94,9 +94,11 @@ export type Transaction = {
 }
 
 export type Payout = {
+    id: string;
     organizerId: string;
+    organizerName: string;
     amount: number;
-    payoutDate: Timestamp;
+    payoutDate: Date;
     status: 'completed' | 'failed';
     processedBy: string; // Admin User ID
 }
@@ -120,3 +122,5 @@ export type SupportTicket = {
     submittedAt: Date;
     resolvedAt?: Date;
 }
+
+    
