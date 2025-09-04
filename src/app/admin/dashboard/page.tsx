@@ -6,15 +6,25 @@ import { collection, query, where, getCountFromServer, getDocs, orderBy, limit }
 import { firestore } from "@/lib/firebase";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Users, Calendar as CalendarIcon, AlertTriangle, Wallet } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import type { Event } from "@/types";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { getDashboardData, type NewUsersData } from "./actions";
 
-const SERVICE_FEE = 150;
+
+const chartConfig = {
+  users: {
+    label: "New Users",
+    color: "hsl(var(--primary))",
+  },
+};
+
 
 export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
@@ -25,50 +35,26 @@ export default function AdminDashboardPage() {
       totalRevenue: 0,
   });
   const [recentEvents, setRecentEvents] = useState<Event[]>([]);
+  const [newUsersData, setNewUsersData] = useState<NewUsersData[]>([]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-        const usersCollection = collection(firestore, "users");
-        const eventsCollection = collection(firestore, "events");
-        const ticketsCollection = collection(firestore, "tickets");
-        
-        const usersSnapshot = await getCountFromServer(usersCollection);
-        const eventsSnapshot = await getCountFromServer(eventsCollection);
-        
-        const pendingQuery = query(eventsCollection, where("status", "==", "pending"));
-        const pendingSnapshot = await getCountFromServer(pendingQuery);
-        
-        const paidTicketsQuery = query(ticketsCollection, where("tier.price", ">", 0));
-        const paidTicketsSnapshot = await getCountFromServer(paidTicketsQuery);
-        const totalRevenue = paidTicketsSnapshot.data().count * SERVICE_FEE;
+       const result = await getDashboardData();
+       if (result.success && result.data) {
+            setStats(result.data.stats);
+            setRecentEvents(result.data.recentEvents);
+            setNewUsersData(result.data.newUsersData);
+       } else {
+           throw new Error(result.message || "Failed to fetch dashboard data");
+       }
 
-        const recentEventsQuery = query(eventsCollection, orderBy("createdAt", "desc"), limit(5));
-        const recentEventsSnapshot = await getDocs(recentEventsQuery);
-        const fetchedRecentEvents = recentEventsSnapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            ...data,
-            date: data.date.toDate(),
-            createdAt: data.createdAt.toDate(),
-          } as Event;
-        });
-        setRecentEvents(fetchedRecentEvents);
-
-        setStats({
-            totalUsers: usersSnapshot.data().count,
-            totalEvents: eventsSnapshot.data().count,
-            pendingEvents: pendingSnapshot.data().count,
-            totalRevenue: totalRevenue,
-        });
-
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching dashboard data: ", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Could not fetch dashboard data.",
+        description: error.message || "Could not fetch dashboard data.",
       });
     } finally {
         setLoading(false);
@@ -142,27 +128,69 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="mt-8">
-        <h2 className="text-2xl font-bold font-headline my-6">Recent Activity</h2>
+
+       <div className="grid gap-8 mt-8 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+                <CardTitle>New Users This Month</CardTitle>
+                <CardDescription>A chart showing daily new user signups for the current month.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                 <ChartContainer config={chartConfig} className="h-[250px] w-full">
+                    <AreaChart
+                        accessibilityLayer
+                        data={newUsersData}
+                        margin={{
+                            left: 12,
+                            right: 12,
+                        }}
+                    >
+                        <CartesianGrid vertical={false} />
+                        <XAxis
+                        dataKey="date"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                        tickFormatter={(value) => format(new Date(value), "MMM d")}
+                        />
+                        <ChartTooltip
+                        cursor={false}
+                        content={<ChartTooltipContent indicator="dot" />}
+                        />
+                        <Area
+                        dataKey="users"
+                        type="natural"
+                        fill="var(--color-users)"
+                        fillOpacity={0.4}
+                        stroke="var(--color-users)"
+                        stackId="a"
+                        />
+                    </AreaChart>
+                </ChartContainer>
+            </CardContent>
+          </Card>
+
          <Card>
+           <CardHeader>
+                <CardTitle>Recent Events</CardTitle>
+                <CardDescription>The last 5 events submitted to the platform.</CardDescription>
+            </CardHeader>
            <CardContent className="p-0">
              {recentEvents.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Event</TableHead>
-                    <TableHead>University</TableHead>
                     <TableHead>Submitted</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="text-right">View</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {recentEvents.map(event => (
                     <TableRow key={event.id}>
                       <TableCell className="font-medium">{event.title}</TableCell>
-                      <TableCell>{event.university}</TableCell>
-                      <TableCell>{format(event.createdAt, 'PPp')}</TableCell>
+                      <TableCell>{format(event.createdAt, 'PP')}</TableCell>
                       <TableCell>
                         <Badge variant={getStatusVariant(event.status)} className="capitalize">
                           {event.status}
