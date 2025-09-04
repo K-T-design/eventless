@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { format }s from "date-fns";
+import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 
 export default function OrganizerEventDetailPage({ params }: { params: { id: string } }) {
