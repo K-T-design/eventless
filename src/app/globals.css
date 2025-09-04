@@ -57,3 +57,18 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Add to your global.css */
+@layer components {
+  .toast-error {
+    max-width: 90vw !important;
+    max-height: 50vh !important;
+  }
+  
+  .toast-error .toast-description {
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow-y: auto;
+    max-height: 200px;
+  }
+}

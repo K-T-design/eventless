@@ -38,6 +38,7 @@ export default function OrganizerEventDetailPage({ params }: { params: { id: str
             variant: "destructive",
             title: "Error",
             description: error.message || "Could not fetch event details.",
+            className: "toast-error",
           });
         } finally {
           setLoading(false);

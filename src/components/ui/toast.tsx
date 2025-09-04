@@ -7,6 +7,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { useEffect, useRef } from "react"
 
 const ToastProvider = ToastPrimitives.Provider
 
@@ -104,14 +105,33 @@ ToastTitle.displayName = ToastPrimitives.Title.displayName
 const ToastDescription = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Description>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Description>
->(({ className, ...props }, ref) => (
-  <ToastPrimitives.Description
-    ref={ref}
-    className={cn("text-sm opacity-90", className)}
-    {...props}
-  />
-))
-ToastDescription.displayName = ToastPrimitives.Description.displayName
+>(({ className, children, ...props }, ref) => {
+  const descriptionRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    // Auto-scroll to show the full error message
+    if (descriptionRef.current && descriptionRef.current.scrollHeight > descriptionRef.current.clientHeight) {
+      descriptionRef.current.scrollTop = descriptionRef.current.scrollHeight;
+    }
+  }, [children]);
+
+  return (
+    <ToastPrimitives.Description
+      ref={ref}
+      className={cn(
+        "text-sm opacity-90 overflow-y-auto max-h-32 break-all", // Added styles for long text
+        className
+      )}
+      {...props}
+    >
+      <div ref={descriptionRef} className="whitespace-pre-wrap">
+        {children}
+      </div>
+    </ToastPrimitives.Description>
+  );
+});
+ToastDescription.displayName = ToastPrimitives.Description.displayName;
+
 
 type ToastProps = React.ComponentPropsWithoutRef<typeof Toast>
 
