@@ -10,6 +10,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { AdminSidebarNav } from "./admin-sidebar";
+import Image from "next/image";
 
 
 export function AdminHeader() {
@@ -25,7 +26,7 @@ export function AdminHeader() {
             <SheetContent side="left" className="flex flex-col p-0">
                 <div className="p-4 border-b">
                      <Link href="/admin/dashboard" className="flex items-center gap-2 font-bold font-headline text-lg">
-                        <LayoutDashboard className="h-6 w-6 text-primary" />
+                        <Image src="/logo.gif" alt="E-Ventless Logo" width={32} height={32} className="rounded-full" />
                         <span className="text-base">E-Ventless Admin</span>
                     </Link>
                 </div>

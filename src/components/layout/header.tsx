@@ -19,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import type { UserProfile } from "@/types";
+import Image from "next/image";
 
 function AuthButtons() {
   const [user, loading, error] = useAuthState(auth);
@@ -126,7 +127,7 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-card shadow-sm">
       <div className="container mx-auto flex h-16 items-center px-4 md:px-6">
         <Link href="/" className="flex items-center gap-2 font-bold font-headline text-lg">
-          <Ticket className="h-6 w-6 text-primary" />
+          <Image src="/logo.gif" alt="E-Ventless Logo" width={40} height={40} className="rounded-full" />
           <span>E-Ventless</span>
         </Link>
         <nav className="hidden md:flex gap-6 items-center mx-auto">

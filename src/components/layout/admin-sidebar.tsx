@@ -17,6 +17,7 @@ import {
 import { useEffect, useState } from "react";
 import { collection, query, where, getCountFromServer } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
+import Image from "next/image";
 
 
 export function AdminSidebar() {
@@ -25,7 +26,7 @@ export function AdminSidebar() {
       <div className="flex h-full max-h-screen flex-col gap-2">
         <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
           <Link href="/admin/dashboard" className="flex items-center gap-2 font-bold font-headline text-lg">
-            <LayoutDashboard className="h-6 w-6 text-primary" />
+             <Image src="/logo.gif" alt="E-Ventless Logo" width={32} height={32} className="rounded-full" />
             <span>E-Ventless Admin</span>
           </Link>
         </div>
