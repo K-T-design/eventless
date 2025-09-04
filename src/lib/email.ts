@@ -1,9 +1,9 @@
 
 'use server';
 
-import * as brevo from '@getbrevo/brevo';
+import { ApiClient, SendSmtpEmail, TransactionalEmailsApi } from '@getbrevo/brevo';
 
-const defaultClient = brevo.ApiClient.instance;
+const defaultClient = ApiClient.instance;
 const apiKey = defaultClient.authentications['api-key'];
 
 // Add a check to ensure the API key is present before proceeding.
@@ -13,7 +13,7 @@ if (process.env.BREVO_API_KEY) {
     console.warn("BREVO_API_KEY is not set. Email functionality will be disabled.");
 }
 
-const apiInstance = new brevo.TransactionalEmailsApi();
+const apiInstance = new TransactionalEmailsApi();
 
 export async function sendTicketEmail(toEmail: string, userName:string, eventName: string, ticketId: string) {
     // Prevent sending emails if the service is not configured.
@@ -24,7 +24,7 @@ export async function sendTicketEmail(toEmail: string, userName:string, eventNam
         throw new Error("Email service is not configured on the server.");
     }
 
-    const sendSmtpEmail = new brevo.SendSmtpEmail();
+    const sendSmtpEmail = new SendSmtpEmail();
     
     sendSmtpEmail.subject = `Your Ticket for ${eventName}`;
     sendSmtpEmail.htmlContent = `
