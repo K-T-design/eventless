@@ -6,7 +6,7 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "@/lib/firebase";
 import { toast } from "@/hooks/use-toast";
 import { getEventDetailsForOrganizer, type EventDetailsData } from "./actions";
-import { Loader2, ArrowLeft, Ticket, Wallet, Users, Download } from "lucide-react";
+import { Loader2, ArrowLeft, Ticket, Wallet, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -51,7 +51,7 @@ export default function OrganizerEventDetailPage({ params }: { params: { id: str
     }
   }, [user, authLoading, params.id]);
   
-  const getStatusVariant = (status: 'pending' | 'approved' | 'rejected') => {
+  const getEventStatusVariant = (status: 'pending' | 'approved' | 'rejected') => {
     switch (status) {
         case 'approved':
             return 'default';
@@ -61,6 +61,15 @@ export default function OrganizerEventDetailPage({ params }: { params: { id: str
             return 'destructive';
         default:
             return 'outline';
+    }
+  }
+
+  const getTicketStatusVariant = (status: 'valid' | 'used') => {
+    switch(status) {
+        case 'valid':
+            return 'default';
+        case 'used':
+            return 'secondary'
     }
   }
   
@@ -136,7 +145,7 @@ export default function OrganizerEventDetailPage({ params }: { params: { id: str
                 <h1 className="text-4xl font-bold font-headline">{event.title}</h1>
                 <div className="flex items-center gap-4 mt-2">
                     <p className="text-muted-foreground">{format(event.date, 'PPPP')}</p>
-                    <Badge variant={getStatusVariant(event.status)} className="capitalize">{event.status}</Badge>
+                    <Badge variant={getEventStatusVariant(event.status)} className="capitalize">{event.status}</Badge>
                 </div>
             </div>
             <Button onClick={handleExportCSV} disabled={attendees.length === 0}>
@@ -179,6 +188,7 @@ export default function OrganizerEventDetailPage({ params }: { params: { id: str
                             <TableHead>Name</TableHead>
                             <TableHead>Email</TableHead>
                             <TableHead>Ticket Tier</TableHead>
+                            <TableHead>Status</TableHead>
                             <TableHead className="text-right">Price</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -188,6 +198,9 @@ export default function OrganizerEventDetailPage({ params }: { params: { id: str
                             <TableCell className="font-medium">{attendee.userName}</TableCell>
                             <TableCell>{attendee.userEmail}</TableCell>
                             <TableCell>{attendee.ticketTier}</TableCell>
+                            <TableCell>
+                                <Badge variant={getTicketStatusVariant(attendee.status)} className="capitalize">{attendee.status}</Badge>
+                            </TableCell>
                             <TableCell className="text-right">₦{attendee.price.toLocaleString()}</TableCell>
                         </TableRow>
                         ))}
