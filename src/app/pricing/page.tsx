@@ -185,7 +185,7 @@ export default function PricingPage() {
                     reference={new Date().getTime().toString()}
                     onSuccess={(res) => handleSubscriptionSuccess(res.reference, tier.planType, tier.durationDays)}
                     onClose={handleClose}
-                    disabled={!user || processingPlan === tier.planType}
+                    disabled={!user || !!processingPlan}
                  >
                     <Button className="w-full" variant={tier.variant as "default" | "secondary"} disabled={!user || !!processingPlan}>
                         {processingPlan === tier.planType ? <Loader2 className="animate-spin"/> : tier.cta}
