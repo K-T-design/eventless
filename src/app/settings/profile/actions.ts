@@ -1,10 +1,11 @@
 
 'use server';
 
-import { doc, updateDoc, Timestamp } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import { firestore as adminFirestore } from "@/lib/firebase-admin"; // Use admin SDK for security on backend operations
 import { firestore as clientFirestore } from "@/lib/firebase"; // Use client for profile updates not requiring admin
 import { revalidatePath } from "next/cache";
+import { Timestamp } from 'firebase-admin/firestore';
 
 type ProfileDetails = {
     name: string;
