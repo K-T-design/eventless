@@ -114,19 +114,25 @@ export default function CreateEventPage() {
         return;
     }
     
-    const isOrg = userProfile.basicInfo.userType === 'organizer';
-    const limit = isOrg ? 8 : 5;
-    const eventsUsed = userProfile.subscription.freeEventsUsed;
+    // Check for active subscription first
+    const hasActiveSubscription = userProfile.subscription.status === 'active';
 
-    if (eventsUsed >= limit) {
-        toast({
-            variant: "destructive",
-            title: "Free Limit Reached",
-            description: `You have used all your free events for this month. Please upgrade your plan.`,
-        });
-        setLoading(false);
-        return;
+    if (!hasActiveSubscription) {
+        const isOrg = userProfile.basicInfo.userType === 'organizer';
+        const limit = isOrg ? 8 : 5;
+        const eventsUsed = userProfile.subscription.freeEventsUsed;
+
+        if (eventsUsed >= limit) {
+            toast({
+                variant: "destructive",
+                title: "Free Limit Reached",
+                description: `You have used all your free events for this month. Please upgrade your plan.`,
+            });
+            setLoading(false);
+            return;
+        }
     }
+
 
     try {
         const batch = writeBatch(firestore);
@@ -153,8 +159,11 @@ export default function CreateEventPage() {
             batch.set(tierRef, tier);
         });
 
-        const userRef = doc(firestore, 'users', user.uid);
-        batch.update(userRef, { 'subscription.freeEventsUsed': increment(1) });
+        // Only increment free event counter if user does NOT have an active subscription
+        if (!hasActiveSubscription) {
+            const userRef = doc(firestore, 'users', user.uid);
+            batch.update(userRef, { 'subscription.freeEventsUsed': increment(1) });
+        }
         
         await batch.commit();
 
@@ -199,8 +208,8 @@ export default function CreateEventPage() {
     )
   }
   
-  const isOrganizer = userProfile?.basicInfo.userType === 'organizer';
-  const eventLimit = isOrganizer ? 8 : 5;
+  const isSubscribed = userProfile?.subscription.status === 'active';
+  const eventLimit = userProfile?.basicInfo.userType === 'organizer' ? 8 : 5;
   const eventsUsed = userProfile?.subscription.freeEventsUsed ?? 0;
   const eventsLeft = Math.max(0, eventLimit - eventsUsed);
 
@@ -216,10 +225,14 @@ export default function CreateEventPage() {
        {userProfile ? (
             <Alert className="mb-8 bg-primary/5 border-primary/20">
                 <Info className="h-4 w-4 text-primary" />
-                <AlertTitle className="text-primary font-bold">Free Event Limit</AlertTitle>
+                <AlertTitle className="text-primary font-bold">
+                    {isSubscribed ? `Plan: ${userProfile.subscription.planType}` : "Free Event Limit"}
+                </AlertTitle>
                 <AlertDescription>
-                You have <strong>{eventsLeft}</strong> free events left this month.{" "}
-                <Link href="/pricing" className="underline font-medium">Upgrade</Link> for unlimited events.
+                 {isSubscribed 
+                    ? `Your subscription is active! You have unlimited event creations.`
+                    : <>You have <strong>{eventsLeft}</strong> free events left this month.{" "}<Link href="/pricing" className="underline font-medium">Upgrade</Link> for unlimited events.</>
+                 }
                 </AlertDescription>
             </Alert>
        ) : (
@@ -466,7 +479,7 @@ export default function CreateEventPage() {
                 </div>
             </div>
 
-          <Button type="submit" size="lg" className="w-full" disabled={loading || isLoading}>
+          <Button type="submit" size="lg" className="w-full" disabled={loading || isLoading || (eventsLeft <= 0 && !isSubscribed)}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Submit for Approval
           </Button>
@@ -475,5 +488,3 @@ export default function CreateEventPage() {
     </div>
   );
 }
-
-    
