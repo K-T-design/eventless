@@ -1,7 +1,7 @@
 
 'use server';
 
-import { doc, getDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
 // Use client SDK because this can be called from a client component page.
 // The security check inside the function ensures authorization.
 import { firestore } from '@/lib/firebase';
@@ -40,11 +40,12 @@ export async function getEventDetailsForOrganizer(eventId: string, organizerId: 
       throw new Error("Event not found.");
     }
 
+    const eventData = eventSnap.data();
     const event = {
       id: eventSnap.id,
-      ...eventSnap.data(),
-      date: eventSnap.data().date.toDate(),
-      createdAt: eventSnap.data().createdAt.toDate(),
+      ...eventData,
+      date: (eventData.date as Timestamp).toDate(),
+      createdAt: (eventData.createdAt as Timestamp).toDate(),
     } as Event;
 
     if (event.organizerId !== organizerId) {
@@ -52,8 +53,8 @@ export async function getEventDetailsForOrganizer(eventId: string, organizerId: 
     }
 
     // 2. Fetch all tickets for the event from its subcollection
-    const ticketsRef = collection(firestore, 'events', eventId, 'tickets');
-    const ticketsQuery = query(ticketsRef, orderBy('purchaseDate', 'desc'));
+    const ticketsRef = collection(firestore, "tickets");
+    const ticketsQuery = query(ticketsRef, where('eventId', '==', eventId), orderBy('purchaseDate', 'desc'));
     const ticketsSnapshot = await getDocs(ticketsQuery);
 
     const tickets = ticketsSnapshot.docs.map(doc => {
@@ -75,7 +76,7 @@ export async function getEventDetailsForOrganizer(eventId: string, organizerId: 
         const usersRef = collection(firestore, 'users');
         const usersQuery = query(usersRef, where('__name__', 'in', userIds));
         const usersSnapshot = await getDocs(usersQuery);
-        const userProfiles = new Map(usersSnapshot.docs.map(doc => [doc.id, doc.data() as UserProfile['basicInfo']]));
+        const userProfiles = new Map(usersSnapshot.docs.map(doc => [doc.id, (doc.data() as UserProfile).basicInfo]));
         
         for (const ticket of tickets) {
             const userProfile = userProfiles.get(ticket.userId);
