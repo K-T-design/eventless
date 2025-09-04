@@ -35,7 +35,7 @@ const tiers = [
     ],
     cta: "Choose Plan",
     variant: "default",
-    planCode: "PLAN_CODE_MONTHLY", // Placeholder
+    planCode: "PLN_3s46lkl33nyznbv",
   },
   {
     name: "The Strategist",
