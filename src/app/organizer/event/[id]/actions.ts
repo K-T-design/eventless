@@ -52,9 +52,10 @@ export async function getEventDetailsForOrganizer(eventId: string, organizerId: 
       throw new Error("You are not authorized to view this event's details.");
     }
 
-    // 2. Fetch all tickets for the event from its subcollection
+    // 2. Fetch all tickets for the event
     const ticketsRef = collection(firestore, "tickets");
-    const ticketsQuery = query(ticketsRef, where('eventId', '==', eventId), orderBy('purchaseDate', 'desc'));
+    // Temporarily removing orderBy to debug index issue
+    const ticketsQuery = query(ticketsRef, where('eventId', '==', eventId)/*, orderBy('purchaseDate', 'desc')*/);
     const ticketsSnapshot = await getDocs(ticketsQuery);
 
     const tickets = ticketsSnapshot.docs.map(doc => {
