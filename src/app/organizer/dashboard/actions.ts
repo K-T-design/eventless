@@ -1,8 +1,7 @@
 
 'use server';
 
-import { firestore } from '@/lib/firebase-admin';
-import type { Event, Ticket, TicketTier } from '@/types';
+import type { Event, Ticket } from '@/types';
 import { collection, query, where, getDocs, orderBy, collectionGroup } from 'firebase/firestore';
 
 // Using client SDK because this will be called from a client component page.
