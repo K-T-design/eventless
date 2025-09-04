@@ -1,7 +1,7 @@
 
 'use server';
 
-import { collection, getDocs, query, orderBy, limit, startAfter, getCountFromServer } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, limit, startAfter, getCountFromServer, doc, updateDoc } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
 import type { UserProfile } from "@/types";
 

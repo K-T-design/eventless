@@ -65,7 +65,7 @@ export default function UserManagementPage() {
         description: result.message,
       });
       // Refresh the list after update by changing local state
-      setUsers(users.map(u => u.id === userId ? { ...u, basicInfo: { ...u.basicInfo, status: result.newStatus } } : u));
+      setUsers(users.map(u => u.id === userId ? { ...u, basicInfo: { ...u.basicInfo, status: currentStatus === 'active' ? 'suspended' : 'active' } } : u));
       fetchUsers(currentPage); // Refetch current page
     } else {
        toast({
