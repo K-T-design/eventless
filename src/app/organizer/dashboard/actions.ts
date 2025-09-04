@@ -2,10 +2,15 @@
 'use server';
 
 import type { Event, Ticket } from '@/types';
-import { collection, query, where, getDocs, orderBy, collectionGroup } from 'firebase/firestore';
-
-// Using client SDK because this will be called from a client component page.
-// For sensitive ops, we'd use firebase-admin in a backend context.
+import { 
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  orderBy, 
+  collectionGroup,
+  Timestamp 
+} from 'firebase/firestore';
 import { firestore as clientFirestore } from '@/lib/firebase';
 
 type EventWithStats = Event & {
@@ -37,12 +42,15 @@ export async function getOrganizerDashboardData(organizerId: string): Promise<Or
     );
     const eventsSnapshot = await getDocs(eventsQuery);
     
-    const events: Event[] = eventsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      date: doc.data().date.toDate(),
-      createdAt: doc.data().createdAt.toDate(),
-    } as Event));
+    const events: Event[] = eventsSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        date: data.date instanceof Timestamp ? data.date.toDate() : new Date(data.date),
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
+      } as Event;
+    });
 
     // 2. Fetch all tickets for all events of this organizer in one go
     const ticketsRef = collectionGroup(clientFirestore, 'tickets');
@@ -57,7 +65,7 @@ export async function getOrganizerDashboardData(organizerId: string): Promise<Or
     const eventsWithStats: EventWithStats[] = events.map(event => {
       const eventTickets = allTickets.filter(ticket => ticket.eventId === event.id);
       const ticketsSold = eventTickets.length;
-      const revenue = eventTickets.reduce((sum, ticket) => sum + ticket.tier.price, 0);
+      const revenue = eventTickets.reduce((sum, ticket) => sum + (ticket.tier?.price || 0), 0);
 
       totalTicketsSold += ticketsSold;
       totalRevenue += revenue;
@@ -78,8 +86,9 @@ export async function getOrganizerDashboardData(organizerId: string): Promise<Or
       events: eventsWithStats,
     };
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching organizer dashboard data:", error);
-    throw new Error("Failed to fetch dashboard data.");
+    // Return a more specific error message
+    throw new Error(`Failed to fetch dashboard data: ${error.message}`);
   }
 }
