@@ -102,6 +102,16 @@ export default function SignUpPage() {
           expiryDate: null,
           freeEventsUsed: 0,
         },
+        bankDetails: {
+            accountNumber: "",
+            bankName: "",
+            accountName: "",
+        },
+        payouts: {
+            balance: 0,
+            status: 'none',
+            lastPayoutDate: null,
+        },
         metadata: {
           dateCreated: serverTimestamp(),
           lastLogin: serverTimestamp(),
@@ -112,16 +122,6 @@ export default function SignUpPage() {
         userDoc.orgInfo = {
           orgName: values.orgName!,
           orgType: values.orgType! as OrgType,
-          bankDetails: {
-            accountNumber: "",
-            bankName: "",
-            accountName: "",
-          },
-          payouts: {
-            balance: 0,
-            status: 'none',
-            lastPayoutDate: null,
-          }
         };
       }
       

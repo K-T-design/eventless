@@ -45,19 +45,19 @@ export interface UserProfile {
     expiryDate: Timestamp | null;
     freeEventsUsed: number;
   };
+  bankDetails?: {
+    accountNumber: string;
+    bankName: string;
+    accountName: string;
+  };
+  payouts?: {
+    balance: number;
+    status: 'none' | 'pending' | 'paid';
+    lastPayoutDate: Timestamp | null;
+  };
   orgInfo?: {
     orgName: string;
     orgType: OrgType;
-    bankDetails: {
-      accountNumber: string;
-      bankName: string;
-      accountName: string;
-    };
-    payouts: {
-      balance: number;
-      status: 'none' | 'pending' | 'paid';
-      lastPayoutDate: Timestamp | null;
-    }
   };
   metadata: {
     dateCreated: Date;
@@ -107,7 +107,7 @@ export type OrganizerPayout = {
   organizerId: string;
   organizerName: string;
   payoutDue: number;
-  bankDetails: UserProfile['orgInfo']['bankDetails'];
+  bankDetails: UserProfile['bankDetails'];
 };
 
 export type SupportTicket = {
@@ -122,5 +122,3 @@ export type SupportTicket = {
     submittedAt: Date;
     resolvedAt?: Date;
 }
-
-    

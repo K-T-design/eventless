@@ -9,7 +9,7 @@ export type OrganizerPayout = {
   organizerId: string;
   organizerName: string;
   payoutDue: number;
-  bankDetails: UserProfile['orgInfo']['bankDetails'];
+  bankDetails: UserProfile['bankDetails'];
 };
 
 export async function getPendingPayouts(): Promise<{
@@ -22,8 +22,7 @@ export async function getPendingPayouts(): Promise<{
     
     const usersSnapshot = await firestore
       .collection('users')
-      .where('basicInfo.userType', '==', 'organizer')
-      .where('orgInfo.payouts.balance', '>', 0)
+      .where('payouts.balance', '>', 0)
       .get();
 
     if (usersSnapshot.empty) {
@@ -32,12 +31,12 @@ export async function getPendingPayouts(): Promise<{
 
     usersSnapshot.forEach((doc) => {
       const user = doc.data() as UserProfile;
-      if (user.orgInfo) {
+      if (user.payouts) {
         payouts.push({
             organizerId: doc.id,
             organizerName: user.basicInfo.name,
-            payoutDue: user.orgInfo.payouts.balance,
-            bankDetails: user.orgInfo.bankDetails,
+            payoutDue: user.payouts.balance,
+            bankDetails: user.bankDetails,
         });
       }
     });
@@ -76,9 +75,9 @@ export async function markPayoutAsPaid(input: { organizerId: string; amount: num
         batch.set(payoutRef, newPayout);
         
         batch.update(userRef, {
-            'orgInfo.payouts.balance': FieldValue.increment(-amount),
-            'orgInfo.payouts.lastPayoutDate': FieldValue.serverTimestamp(),
-            'orgInfo.payouts.status': 'paid'
+            'payouts.balance': FieldValue.increment(-amount),
+            'payouts.lastPayoutDate': FieldValue.serverTimestamp(),
+            'payouts.status': 'paid'
         });
 
         await batch.commit();
@@ -123,5 +122,3 @@ export async function getPayoutHistory(): Promise<{
     };
   }
 }
-
-    

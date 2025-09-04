@@ -113,11 +113,11 @@ export async function verifyPaymentAndCreateTicket(
         };
         transaction.set(transactionRef, newTransaction);
         
-        // Update the organizer's balance if it's a paid ticket
+        // Update the event creator's balance if it's a paid ticket
         if (ticketRevenue > 0) {
             transaction.update(organizerRef, {
-                'orgInfo.payouts.balance': FieldValue.increment(ticketRevenue),
-                'orgInfo.payouts.status': 'pending'
+                'payouts.balance': FieldValue.increment(ticketRevenue),
+                'payouts.status': 'pending'
             });
         }
     });

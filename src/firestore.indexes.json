@@ -44,11 +44,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "basicInfo.userType",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "orgInfo.payouts.balance",
+          "fieldPath": "payouts.balance",
           "order": "ASCENDING"
         }
       ]
@@ -98,5 +94,3 @@
   ],
   "fieldOverrides": []
 }
-
-    

@@ -67,8 +67,8 @@ export default function PayoutsSettingsPage() {
           const profile = { id: userDocSnap.id, ...userDocSnap.data() } as UserProfile;
           setUserProfile(profile);
           // Set form defaults from fetched profile
-          if (profile.basicInfo.userType === 'organizer' && profile.orgInfo?.bankDetails) {
-            form.reset(profile.orgInfo.bankDetails);
+          if (profile.bankDetails) {
+            form.reset(profile.bankDetails);
           }
         }
         setProfileLoading(false);
@@ -117,19 +117,6 @@ export default function PayoutsSettingsPage() {
             <Skeleton className="h-12 w-32" />
         </div>
     )
-  }
-  
-  if (userProfile?.basicInfo.userType !== 'organizer') {
-     return (
-        <Alert variant="default" className="bg-amber-50 border-amber-200 text-amber-900">
-            <ShieldAlert className="h-4 w-4 !text-amber-600" />
-            <AlertTitle>Payouts Not Applicable</AlertTitle>
-            <AlertDescription>
-                Payout settings are only available for organizers. To become an organizer, you can create a new account or contact support.
-                Your current account type is an <strong>{userProfile?.basicInfo.userType}</strong>.
-            </AlertDescription>
-        </Alert>
-     )
   }
 
   return (
