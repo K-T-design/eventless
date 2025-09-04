@@ -20,7 +20,8 @@ const tiers = [
       "Basic event analytics",
     ],
     cta: "Choose Plan",
-    variant: "secondary"
+    variant: "secondary",
+    planCode: "PLN_8omcnih6dq1w4ma",
   },
   {
     name: "The Hustler",
@@ -33,7 +34,8 @@ const tiers = [
       "Best for ongoing momentum",
     ],
     cta: "Choose Plan",
-    variant: "default"
+    variant: "default",
+    planCode: "PLAN_CODE_MONTHLY", // Placeholder
   },
   {
     name: "The Strategist",
@@ -46,7 +48,8 @@ const tiers = [
       "Save ₦16,500 vs. paying monthly",
     ],
     cta: "Choose Plan",
-    variant: "secondary"
+    variant: "secondary",
+    planCode: "PLAN_CODE_QUARTERLY", // Placeholder
   },
   {
     name: "The Visionary",
@@ -60,7 +63,8 @@ const tiers = [
       "Priority customer support",
     ],
     cta: "Choose Plan",
-    variant: "secondary"
+    variant: "secondary",
+    planCode: "PLAN_CODE_YEARLY", // Placeholder
   },
 ];
 
