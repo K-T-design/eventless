@@ -9,7 +9,7 @@ export default function Home() {
     <div className="flex flex-col">
       <section className="relative w-full h-[60vh] md:h-[70vh]">
         <Image
-          src="https://picsum.photos/1600/900"
+          src="https://ik.imagekit.io/t48u898g8/eventless_logo-removebg-preview%20(2).png?updatedAt=1757007814945"
           alt="Dynamic crowd at a university event"
           fill
           className="object-cover"
