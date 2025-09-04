@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { collection, getDocs, query, orderBy, getDoc, doc } from "firebase/firestore";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { collection, getDocs as getSubDocs, getDoc, doc } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
 import type { Event, UserProfile, TicketTier } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Loader2, Calendar, MapPin, University, Clock, User } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { updateEventStatus } from "./actions";
+import { getEvents, updateEventStatus } from "./actions";
 import {
   Dialog,
   DialogContent,
@@ -51,58 +51,29 @@ export default function EventManagementPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<"all" | EventStatus>("all");
   const [universityFilter, setUniversityFilter] = useState<string>("all");
+  const [universities, setUniversities] = useState<string[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<EventWithDetails | null>(null);
 
-  const fetchEvents = async () => {
+  const fetchEvents = useCallback(async () => {
     setLoading(true);
-    try {
-      const eventsCollection = collection(firestore, "events");
-      const q = query(eventsCollection, orderBy("createdAt", "desc"));
-      const querySnapshot = await getDocs(q);
+    const fetchedEvents = await getEvents({ status: statusFilter, university: universityFilter });
+    setEvents(fetchedEvents);
+    setLoading(false);
+  }, [statusFilter, universityFilter]);
 
-      const eventsList = await Promise.all(
-        querySnapshot.docs.map(async (docSnapshot) => {
-          const data = docSnapshot.data();
-          const event: Event = {
-            id: docSnapshot.id,
-            ...data,
-            date: data.date.toDate(),
-            createdAt: data.createdAt.toDate(),
-          } as Event;
+  const fetchInitialUniversities = async () => {
+    const eventsSnapshot = await getSubDocs(collection(firestore, "events"));
+    const uniqueUniversities = [...new Set(eventsSnapshot.docs.map(doc => doc.data().university as string))];
+    setUniversities(uniqueUniversities.sort());
+  }
 
-          let organizerInfo: UserProfile['basicInfo'] | undefined;
-          if (event.organizerId) {
-            const userRef = doc(firestore, 'users', event.organizerId);
-            const userSnap = await getDoc(userRef);
-            if (userSnap.exists()) {
-              organizerInfo = (userSnap.data() as UserProfile).basicInfo;
-            }
-          }
-          
-          const tiersRef = collection(docSnapshot.ref, "ticketTiers");
-          const tiersSnapshot = await getDocs(tiersRef);
-          const ticketTiers = tiersSnapshot.docs.map(tierDoc => tierDoc.data() as TicketTier);
-
-          return { ...event, organizer: organizerInfo, ticketTiers };
-        })
-      );
-      
-      setEvents(eventsList);
-    } catch (error) {
-      console.error("Error fetching events: ", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Could not fetch event data.",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    fetchInitialUniversities();
+  }, []);
 
   useEffect(() => {
     fetchEvents();
-  }, []);
+  }, [fetchEvents]);
 
   const handleTakeDown = async (eventId: string) => {
     const result = await updateEventStatus(eventId, 'rejected');
@@ -111,8 +82,7 @@ export default function EventManagementPage() {
         title: "Event Taken Down",
         description: "The event has been removed from the public listing.",
       });
-      // Optimistically update the UI
-      setEvents(events.map(e => e.id === eventId ? { ...e, status: 'rejected' } : e));
+      fetchEvents();
     } else {
       toast({
         variant: "destructive",
@@ -122,26 +92,6 @@ export default function EventManagementPage() {
     }
   };
 
-  const universities = useMemo(() => [...new Set(events.map(event => event.university))], [events]);
-
-  const filteredEvents = useMemo(() => {
-    return events
-      .filter((event) =>
-        statusFilter !== 'all' ? event.status === statusFilter : true
-      )
-      .filter((event) =>
-        universityFilter !== 'all' ? event.university === universityFilter : true
-      );
-  }, [events, statusFilter, universityFilter]);
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-full">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-  
   const getStatusVariant = (status: EventStatus) => {
     switch (status) {
         case 'approved':
@@ -189,7 +139,11 @@ export default function EventManagementPage() {
             </div>
         </CardHeader>
         <CardContent className="p-0">
-          {filteredEvents.length > 0 ? (
+          {loading ? (
+             <div className="flex justify-center items-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : events.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -201,7 +155,7 @@ export default function EventManagementPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredEvents.map((event) => (
+                {events.map((event) => (
                   <TableRow key={event.id}>
                     <TableCell className="font-medium">
                       {event.title}
