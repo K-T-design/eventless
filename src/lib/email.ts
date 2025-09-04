@@ -1,18 +1,6 @@
 
 'use server';
 
-import {
-  Configuration,
-  EmailsApi,
-  EmailTransactionalMessageData,
-} from '@elasticemail/elasticemail-client';
-
-const config = new Configuration({
-  apiKey: process.env.ELASTIC_EMAIL_API_KEY,
-});
-
-const emailsApi = new EmailsApi(config);
-
 type EmailOptions = {
   to: string;
   subject: string;
@@ -21,34 +9,36 @@ type EmailOptions = {
 
 export const sendEmail = async (options: EmailOptions) => {
   if (!process.env.ELASTIC_EMAIL_API_KEY || !process.env.ELASTIC_EMAIL_FROM_EMAIL) {
-    console.error('Elastic Email API key or From Email is not configured.');
-    // In a real app, you might want to throw an error or handle this differently
-    return { success: false, message: 'Email service is not configured.' };
+    const errorMessage = 'Elastic Email API key or From Email is not configured.';
+    console.error(errorMessage);
+    return { success: false, message: errorMessage };
   }
 
-  const emailTransactionalMessageData: EmailTransactionalMessageData = {
-    Recipients: {
-      To: [options.to],
-    },
-    Content: {
-      Body: [
-        {
-          ContentType: 'HTML',
-          Content: options.html,
-          Charset: 'utf-8',
-        },
-      ],
-      From: process.env.ELASTIC_EMAIL_FROM_EMAIL,
-      Subject: options.subject,
-    },
-  };
+  const formData = new URLSearchParams();
+  formData.append('apikey', process.env.ELASTIC_EMAIL_API_KEY);
+  formData.append('subject', options.subject);
+  formData.append('from', process.env.ELASTIC_EMAIL_FROM_EMAIL);
+  formData.append('to', options.to);
+  formData.append('bodyHtml', options.html);
+  formData.append('isTransactional', 'true');
+
 
   try {
-    await emailsApi.emailsTransactionalPost(emailTransactionalMessageData);
+    const response = await fetch('https://api.elasticemail.com/v2/email/send', {
+        method: 'POST',
+        body: formData,
+    });
+    
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.error || 'Unknown error from Elastic Email API');
+    }
+
     console.log('Transactional email sent successfully.');
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error sending transactional email:', error);
-    return { success: false, message: 'Failed to send email.' };
+    return { success: false, message: `Failed to send email: ${error.message}` };
   }
 };
