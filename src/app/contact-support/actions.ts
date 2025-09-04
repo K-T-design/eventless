@@ -32,7 +32,7 @@ export async function createSupportTicket(input: CreateTicketInput, userId: stri
         userId: userId,
         userEmail: userProfile.basicInfo.email,
         userName: userProfile.basicInfo.name,
-        status: 'open',
+        status: 'open' as const,
         submittedAt: serverTimestamp(),
     };
 
