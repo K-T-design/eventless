@@ -24,20 +24,28 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
-import { Loader2, ShieldAlert } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth, firestore } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import type { UserProfile } from "@/types";
 import { updatePayoutDetails } from "./actions";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import Link from "next/link";
+import { NIGERIAN_BANKS } from "@/lib/banks";
 
 const formSchema = z.object({
   bankName: z.string().min(1, "Please select a bank."),
+  otherBankName: z.string().optional(),
   accountNumber: z.string().length(10, "Account number must be 10 digits."),
   accountName: z.string().min(3, "Account name seems too short."),
+}).refine(data => {
+    if (data.bankName === 'Other' && (!data.otherBankName || data.otherBankName.length < 3)) {
+        return false;
+    }
+    return true;
+}, {
+    message: "Please specify the bank name.",
+    path: ["otherBankName"],
 });
 
 type PayoutFormValues = z.infer<typeof formSchema>;
@@ -54,8 +62,11 @@ export default function PayoutsSettingsPage() {
       accountName: "",
       accountNumber: "",
       bankName: "",
+      otherBankName: "",
     },
   });
+
+  const watchedBankName = form.watch("bankName");
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -68,7 +79,12 @@ export default function PayoutsSettingsPage() {
           setUserProfile(profile);
           // Set form defaults from fetched profile
           if (profile.bankDetails) {
-            form.reset(profile.bankDetails);
+            const isOtherBank = !NIGERIAN_BANKS.some(b => b.name === profile.bankDetails.bankName);
+            form.reset({
+              ...profile.bankDetails,
+              bankName: isOtherBank ? 'Other' : profile.bankDetails.bankName,
+              otherBankName: isOtherBank ? profile.bankDetails.bankName : '',
+            });
           }
         }
         setProfileLoading(false);
@@ -86,7 +102,15 @@ export default function PayoutsSettingsPage() {
       return;
     }
     setLoading(true);
-    const result = await updatePayoutDetails(user.uid, values);
+
+    const finalBankName = values.bankName === 'Other' ? values.otherBankName : values.bankName;
+
+    const result = await updatePayoutDetails(user.uid, {
+        accountName: values.accountName,
+        accountNumber: values.accountNumber,
+        bankName: finalBankName!,
+    });
+
     if (result.success) {
       toast({
         title: "Details Saved!",
@@ -141,20 +165,32 @@ export default function PayoutsSettingsPage() {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="Guaranty Trust Bank">Guaranty Trust Bank</SelectItem>
-                    <SelectItem value="First Bank of Nigeria">First Bank of Nigeria</SelectItem>
-                    <SelectItem value="Zenith Bank">Zenith Bank</SelectItem>
-                    <SelectItem value="Access Bank">Access Bank</SelectItem>
-                    <SelectItem value="United Bank for Africa">United Bank for Africa</SelectItem>
-                     <SelectItem value="Kuda MFB">Kuda MFB</SelectItem>
-                    <SelectItem value="Opay">Opay</SelectItem>
-                    <SelectItem value="Palmpay">Palmpay</SelectItem>
+                    {NIGERIAN_BANKS.map(bank => (
+                       <SelectItem key={bank.code} value={bank.name}>{bank.name}</SelectItem>
+                    ))}
+                    <SelectItem value="Other">Other</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
               </FormItem>
             )}
           />
+
+          {watchedBankName === 'Other' && (
+             <FormField
+                control={form.control}
+                name="otherBankName"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Other Bank Name</FormLabel>
+                    <FormControl>
+                    <Input placeholder="Enter your bank's name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
+          )}
 
           <FormField
             control={form.control}
