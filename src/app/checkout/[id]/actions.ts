@@ -17,6 +17,7 @@ type VerifyPaymentInput = {
 
 const SERVICE_FEE = 150;
 
+// This is a helper function to isolate the email sending logic and its error handling.
 async function createAndSendTicket(
     event: Event, 
     user: UserProfile, 
@@ -24,16 +25,18 @@ async function createAndSendTicket(
     quantity: number
 ) {
   try {
+    const ticketId = ticketData.qrCodeData.split(':')[1]; // Extract ticket ID from QR data
     await sendTicketEmail(
         user.basicInfo.email,
         user.basicInfo.name,
         event.title,
-        ticketData.qrCodeData.split(':')[1] // Extract ticket ID from QR data
+        ticketId
     );
   } catch (emailError) {
-      console.error(`Failed to send ticket email for user ${user.id}`, emailError);
-      // We don't throw an error here because the purchase was successful.
-      // We should log this for monitoring.
+      console.error(`Failed to send ticket email for user ${user.id} and ticket ${ticketData.qrCodeData}. Reason:`, emailError);
+      // We don't throw an error here to the end-user because the purchase itself was successful.
+      // This should be logged for monitoring by the admin (e.g., using a logging service).
+      // The user will still get their ticket in "My Tickets", but we acknowledge the email failed.
   }
 }
 
@@ -63,7 +66,7 @@ export async function verifyPaymentAndCreateTicket(
       if (!data.status || data.data.status !== 'success') {
         return { success: false, message: data.message || 'Payment verification failed.' };
       }
-      transactionAmount = data.data.amount / 100;
+      transactionAmount = data.data.amount / 100; // Amount is in kobo
 
       const expectedAmount = (tier.price * quantity) + SERVICE_FEE;
       if (transactionAmount < expectedAmount) {
@@ -74,8 +77,10 @@ export async function verifyPaymentAndCreateTicket(
       transactionAmount = 0;
     }
 
+    // Check if a paid transaction has already been processed to prevent replay attacks.
     const transactionSnapshot = await firestore.collection('transactions').where('reference', '==', reference).limit(1).get();
     if (!transactionSnapshot.empty && !isFreeTicket) {
+        // This is not an error, just an indication that the webhook might have run first.
         return { success: true, message: "This transaction has already been processed."};
     }
 
@@ -97,6 +102,7 @@ export async function verifyPaymentAndCreateTicket(
     let firstTicketData: Omit<Ticket, 'id'> | null = null;
     let createdTicketIds: string[] = [];
     
+    // Use a transaction to ensure all database writes succeed or fail together.
     await firestore.runTransaction(async (transaction) => {
         const ticketRevenue = tier.price * quantity;
         
@@ -113,7 +119,7 @@ export async function verifyPaymentAndCreateTicket(
                 tier: tier,
                 eventDetails: {
                   title: eventData.title,
-                  date: eventData.date as any,
+                  date: eventData.date as any, // Firestore will convert JS Date to Timestamp
                   location: eventData.location,
                   organizerId: eventData.organizerId,
                 },
@@ -121,6 +127,7 @@ export async function verifyPaymentAndCreateTicket(
             transaction.set(ticketRef, newTicket);
             createdTicketIds.push(ticketRef.id);
 
+            // We only need one ticket's data for the confirmation email
             if (i === 0) {
               firstTicketData = newTicket;
             }
@@ -146,12 +153,12 @@ export async function verifyPaymentAndCreateTicket(
         }
     });
 
-    // Send email after transaction is committed
+    // Send email *after* the database transaction has been successfully committed.
     if(firstTicketData) {
       await createAndSendTicket({ ...eventData, id: eventId }, { ...userData, id: userId }, firstTicketData, quantity);
     }
 
-    return { success: true, message: `Successfully created ${quantity} ticket(s)! A confirmation email has been sent.` };
+    return { success: true, message: `Successfully created ${quantity} ticket(s)! Your ticket is in your "My Tickets" section. A confirmation email has been sent.` };
 
   } catch (error: any) {
     console.error('Error in verifyPaymentAndCreateTicket:', error);

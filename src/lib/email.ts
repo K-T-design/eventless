@@ -5,6 +5,8 @@ import * as brevo from '@getbrevo/brevo';
 
 const defaultClient = brevo.ApiClient.instance;
 const apiKey = defaultClient.authentications['api-key'];
+
+// Add a check to ensure the API key is present before proceeding.
 if (process.env.BREVO_API_KEY) {
     apiKey.apiKey = process.env.BREVO_API_KEY;
 } else {
@@ -13,10 +15,13 @@ if (process.env.BREVO_API_KEY) {
 
 const apiInstance = new brevo.TransactionalEmailsApi();
 
-export async function sendTicketEmail(toEmail: string, userName: string, eventName: string, ticketId: string) {
+export async function sendTicketEmail(toEmail: string, userName:string, eventName: string, ticketId: string) {
+    // Prevent sending emails if the service is not configured.
     if (!process.env.BREVO_API_KEY) {
         console.error("Cannot send email: BREVO_API_KEY is not configured.");
-        return { success: false, message: "Email service is not configured." };
+        // We throw an error here to ensure the calling function is aware of the configuration issue.
+        // This prevents a ticket from appearing to be sent when it was not.
+        throw new Error("Email service is not configured on the server.");
     }
 
     const sendSmtpEmail = new brevo.SendSmtpEmail();
@@ -47,14 +52,12 @@ export async function sendTicketEmail(toEmail: string, userName: string, eventNa
 
     try {
         await apiInstance.sendTransacEmail(sendSmtpEmail);
-        console.log('Email sent successfully!');
+        console.log(`Email sent successfully to ${toEmail}`);
         return { success: true, message: 'Email sent successfully' };
     } catch (error) {
         console.error('Failed to send email:', error);
-        return { 
-        success: false, 
-        message: 'Failed to send email',
-        error: error 
-        };
+        // Do not expose detailed error messages to the client for security.
+        // Log the full error on the server for debugging.
+        throw new Error('Failed to send the confirmation email.');
     }
 }
