@@ -1,8 +1,13 @@
+
+"use client"
+
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, QrCode, Search, TrendingUp, Users, CheckCircle } from "lucide-react";
+import { PlusCircle, QrCode, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import FluidGlass from "@/components/fluid-glass";
+import { Suspense } from "react";
+
 
 export default function Home() {
   return (
@@ -104,8 +109,30 @@ export default function Home() {
            </div>
         </div>
       </section>
+
+      <section className="w-full py-16 md:py-24 bg-white">
+        <div className="container mx-auto px-4 md:px-6">
+            <div className="text-center mb-12">
+                <h2 className="text-4xl md:text-5xl font-bold font-headline mb-4">A Touch of Magic</h2>
+                <p className="text-lg md:text-xl max-w-3xl mx-auto text-muted-foreground">Interact with our fluid glass component below.</p>
+            </div>
+            <Suspense fallback={<div className="h-[600px] w-full bg-muted rounded-lg flex items-center justify-center"><p>Loading 3D Component...</p></div>}>
+                 <div className="h-[600px] relative rounded-lg overflow-hidden shadow-2xl">
+                    <FluidGlass 
+                        mode="lens"
+                        lensProps={{
+                          scale: 0.25,
+                          ior: 1.15,
+                          thickness: 5,
+                          chromaticAberration: 0.1,
+                          anisotropy: 0.01  
+                        }}
+                    />
+                </div>
+            </Suspense>
+        </div>
+      </section>
+
     </div>
   );
 }
-
-    
