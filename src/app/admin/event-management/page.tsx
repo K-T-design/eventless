@@ -73,7 +73,7 @@ export default function EventManagementPage() {
 
   useEffect(() => {
     fetchEvents();
-  }, [fetchEvents]);
+  }, [fetchEvents, statusFilter, universityFilter]);
 
   const handleTakeDown = async (eventId: string) => {
     const result = await updateEventStatus(eventId, 'rejected');
