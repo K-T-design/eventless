@@ -9,7 +9,7 @@ export default function Home() {
     <div className="flex flex-col">
       <section className="relative w-full h-[60vh] md:h-[70vh]">
         <Image
-          src="https://ik.imagekit.io/t48u898g8/eventless_logo-removebg-preview%20(2).png?updatedAt=1757007814945"
+          src="https://picsum.photos/1920/1080"
           alt="Dynamic crowd at a university event"
           fill
           className="object-cover"
@@ -37,13 +37,23 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="features" className="w-full py-12 md:py-24 bg-background">
-        <div className="container mx-auto px-4 md:px-6">
+      <section 
+        id="features" 
+        className="w-full py-12 md:py-24 bg-background relative"
+        style={{
+            backgroundImage: "url('https://ik.imagekit.io/t48u898g8/eventless_logo-removebg-preview%20(2).png?updatedAt=1757007814945')",
+            backgroundSize: 'contain',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+        }}
+      >
+        <div className="absolute inset-0 bg-background/90 backdrop-blur-sm"></div>
+        <div className="container mx-auto px-4 md:px-6 relative">
           <h2 className="text-3xl font-bold text-center mb-12 font-headline">
             All-in-One Event Platform
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="text-center shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <Card className="text-center shadow-lg hover:shadow-xl transition-shadow duration-300 bg-card/80">
               <CardHeader>
                 <div className="mx-auto bg-primary/10 p-4 rounded-full w-fit">
                   <Search className="h-8 w-8 text-primary" />
@@ -56,7 +66,7 @@ export default function Home() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="text-center shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <Card className="text-center shadow-lg hover:shadow-xl transition-shadow duration-300 bg-card/80">
               <CardHeader>
                 <div className="mx-auto bg-primary/10 p-4 rounded-full w-fit">
                   <PlusCircle className="h-8 w-8 text-primary" />
@@ -69,7 +79,7 @@ export default function Home() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="text-center shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <Card className="text-center shadow-lg hover:shadow-xl transition-shadow duration-300 bg-card/80">
               <CardHeader>
                 <div className="mx-auto bg-primary/10 p-4 rounded-full w-fit">
                   <QrCode className="h-8 w-8 text-primary" />
