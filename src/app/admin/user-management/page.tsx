@@ -26,6 +26,7 @@ import { Loader2 } from "lucide-react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { getUsers, updateUserStatus } from "./actions";
 import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const PAGE_SIZE = 15;
 
@@ -178,94 +179,98 @@ export default function UserManagementPage() {
 
       {selectedUser && (
         <Dialog open={!!selectedUser} onOpenChange={(isOpen) => !isOpen && setSelectedUser(null)}>
-          <DialogContent>
+          <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle className="font-headline text-2xl">{selectedUser.basicInfo.name}</DialogTitle>
               <DialogDescription>
                 User ID: {selectedUser.id}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-6 py-4 text-sm">
-                
-                <div className="space-y-4">
-                    <h3 className="font-semibold text-base text-foreground">Account Information</h3>
-                     <div className="grid grid-cols-3 items-center gap-4">
-                        <span className="text-muted-foreground">Email</span>
-                        <span className="col-span-2 font-medium">{selectedUser.basicInfo.email}</span>
+            <ScrollArea className="max-h-[70vh] pr-4">
+                <div className="space-y-6 py-4 text-sm">
+                    
+                    <div className="space-y-4">
+                        <h3 className="font-semibold text-base text-foreground">Account Information</h3>
+                         <div className="grid grid-cols-3 items-center gap-4">
+                            <span className="text-muted-foreground">Email</span>
+                            <span className="col-span-2 font-medium">{selectedUser.basicInfo.email}</span>
+                        </div>
+                         <div className="grid grid-cols-3 items-center gap-4">
+                            <span className="text-muted-foreground">Phone</span>
+                            <span className="col-span-2 font-medium">{selectedUser.basicInfo.phone}</span>
+                        </div>
+                        <div className="grid grid-cols-3 items-center gap-4">
+                            <span className="text-muted-foreground">User Type</span>
+                            <span className="col-span-2 font-medium capitalize">{selectedUser.basicInfo.userType.replace('_', ' ')}</span>
+                        </div>
+                         <div className="grid grid-cols-3 items-center gap-4">
+                            <span className="text-muted-foreground">Status</span>
+                             <Badge variant={getStatusVariant(selectedUser.basicInfo.status)} className="capitalize w-fit">
+                                {selectedUser.basicInfo.status}
+                              </Badge>
+                        </div>
+                         <div className="grid grid-cols-3 items-center gap-4">
+                            <span className="text-muted-foreground">Date Joined</span>
+                            <span className="col-span-2 font-medium">{format(selectedUser.metadata.dateCreated, "PPP")}</span>
+                        </div>
                     </div>
-                     <div className="grid grid-cols-3 items-center gap-4">
-                        <span className="text-muted-foreground">Phone</span>
-                        <span className="col-span-2 font-medium">{selectedUser.basicInfo.phone}</span>
-                    </div>
-                    <div className="grid grid-cols-3 items-center gap-4">
-                        <span className="text-muted-foreground">User Type</span>
-                        <span className="col-span-2 font-medium capitalize">{selectedUser.basicInfo.userType.replace('_', ' ')}</span>
-                    </div>
-                     <div className="grid grid-cols-3 items-center gap-4">
-                        <span className="text-muted-foreground">Status</span>
-                         <Badge variant={getStatusVariant(selectedUser.basicInfo.status)} className="capitalize w-fit">
-                            {selectedUser.basicInfo.status}
-                          </Badge>
-                    </div>
-                     <div className="grid grid-cols-3 items-center gap-4">
-                        <span className="text-muted-foreground">Date Joined</span>
-                        <span className="col-span-2 font-medium">{format(selectedUser.metadata.dateCreated, "PPP")}</span>
-                    </div>
-                </div>
 
-                 {selectedUser.basicInfo.userType === 'organizer' && selectedUser.orgInfo && (
+                     {selectedUser.basicInfo.userType === 'organizer' && selectedUser.orgInfo && (
+                        <div>
+                            <Separator className="my-4" />
+                            <h3 className="font-semibold text-base text-foreground mb-4">Organization Details</h3>
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-3 items-center gap-4">
+                                    <span className="text-muted-foreground">Org. Name</span>
+                                    <span className="col-span-2 font-medium">{selectedUser.orgInfo.orgName}</span>
+                                </div>
+                                <div className="grid grid-cols-3 items-center gap-4">
+                                    <span className="text-muted-foreground">Org. Type</span>
+                                    <span className="col-span-2 font-medium">{selectedUser.orgInfo.orgType}</span>
+                                </div>
+                            </div>
+                        </div>
+                     )}
+
                     <div>
                         <Separator className="my-4" />
-                        <h3 className="font-semibold text-base text-foreground mb-4">Organization Details</h3>
+                        <h3 className="font-semibold text-base text-foreground mb-4">Financials</h3>
                         <div className="space-y-4">
                             <div className="grid grid-cols-3 items-center gap-4">
-                                <span className="text-muted-foreground">Org. Name</span>
-                                <span className="col-span-2 font-medium">{selectedUser.orgInfo.orgName}</span>
+                                <span className="text-muted-foreground">Payout Balance</span>
+                                <span className="col-span-2 font-medium">₦{selectedUser.payouts?.balance?.toLocaleString() ?? 0}</span>
                             </div>
-                            <div className="grid grid-cols-3 items-center gap-4">
-                                <span className="text-muted-foreground">Org. Type</span>
-                                <span className="col-span-2 font-medium">{selectedUser.orgInfo.orgType}</span>
-                            </div>
+                            {selectedUser.bankDetails?.accountNumber ? (
+                               <>
+                                 <div className="grid grid-cols-3 items-center gap-4">
+                                    <span className="text-muted-foreground">Bank Name</span>
+                                    <span className="col-span-2 font-medium">{selectedUser.bankDetails.bankName}</span>
+                                </div>
+                                 <div className="grid grid-cols-3 items-center gap-4">
+                                    <span className="text-muted-foreground">Account Name</span>
+                                    <span className="col-span-2 font-medium">{selectedUser.bankDetails.accountName}</span>
+                                </div>
+                                 <div className="grid grid-cols-3 items-center gap-4">
+                                    <span className="text-muted-foreground">Account Number</span>
+                                    <span className="col-span-2 font-medium">{selectedUser.bankDetails.accountNumber}</span>
+                                </div>
+                               </>
+                            ) : (
+                                 <div className="grid grid-cols-3 items-center gap-4">
+                                    <span className="text-muted-foreground">Bank Details</span>
+                                    <span className="col-span-2 text-muted-foreground italic">Not provided</span>
+                                </div>
+                            )}
                         </div>
                     </div>
-                 )}
 
-                <div>
-                    <Separator className="my-4" />
-                    <h3 className="font-semibold text-base text-foreground mb-4">Financials</h3>
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-3 items-center gap-4">
-                            <span className="text-muted-foreground">Payout Balance</span>
-                            <span className="col-span-2 font-medium">₦{selectedUser.payouts?.balance?.toLocaleString() ?? 0}</span>
-                        </div>
-                        {selectedUser.bankDetails?.accountNumber ? (
-                           <>
-                             <div className="grid grid-cols-3 items-center gap-4">
-                                <span className="text-muted-foreground">Bank Name</span>
-                                <span className="col-span-2 font-medium">{selectedUser.bankDetails.bankName}</span>
-                            </div>
-                             <div className="grid grid-cols-3 items-center gap-4">
-                                <span className="text-muted-foreground">Account Name</span>
-                                <span className="col-span-2 font-medium">{selectedUser.bankDetails.accountName}</span>
-                            </div>
-                             <div className="grid grid-cols-3 items-center gap-4">
-                                <span className="text-muted-foreground">Account Number</span>
-                                <span className="col-span-2 font-medium">{selectedUser.bankDetails.accountNumber}</span>
-                            </div>
-                           </>
-                        ) : (
-                             <div className="grid grid-cols-3 items-center gap-4">
-                                <span className="text-muted-foreground">Bank Details</span>
-                                <span className="col-span-2 text-muted-foreground italic">Not provided</span>
-                            </div>
-                        )}
-                    </div>
                 </div>
-
-            </div>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
       )}
     </>
   );
 }
+
+    
