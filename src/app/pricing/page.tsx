@@ -1,45 +1,63 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const tiers = [
   {
-    name: "Individual",
-    price: "Free",
-    priceSuffix: "",
-    description: "Perfect for students and individuals getting started with event organization.",
+    name: "The Quick Host",
+    price: "₦5,000",
+    priceSuffix: "/ week",
+    description: "For pop-up events & quick tests. Unlimited, full-featured access for a full week.",
     features: [
-      "Up to 5 free events per month",
+      "Unlimited Event Creation for 7 Days",
+      "Create events with multiple ticket tiers",
+      "Secure payments via Paystack",
+      "Scannable QR codes for check-in",
+      "Real-time sales and revenue tracking",
+      "Export attendee list",
       "Basic event analytics",
-      "Standard support",
     ],
-    cta: "Get Started",
+    cta: "Choose Plan",
     variant: "secondary"
   },
   {
-    name: "Individual Pro",
-    price: "₦5,000",
+    name: "The Hustler",
+    price: "₦20,500",
     priceSuffix: "/ month",
-    description: "For the serious individual organizer who needs more features and capacity.",
+    description: "For consistent creators building a community. Your month-to-month pass to unlimited events.",
     features: [
-      "Unlimited events",
-      "Advanced event analytics",
-      "Custom event URLs",
-      "Priority support",
+      "Unlimited Event Creation for 1 Month",
+      "All Core Features Included",
+      "Best for ongoing momentum",
     ],
-    cta: "Upgrade Now",
+    cta: "Choose Plan",
     variant: "default"
   },
   {
-    name: "Organization",
-    price: "₦15,000",
-    priceSuffix: "/ month",
-    description: "Tailored for clubs, departments, and larger student organizations.",
+    name: "The Strategist",
+    price: "₦65,000",
+    priceSuffix: "/ 4 months",
+    description: "Plan your entire season ahead and save over 20% compared to the monthly plan.",
     features: [
-      "Up to 8 free events per month",
-      "Team member access (up to 5)",
-      "Branded event pages",
-      "Dedicated support",
+      "Unlimited Event Creation for 4 Months",
+      "All Core Features Included",
+      "Save ₦16,500 vs. paying monthly",
+    ],
+    cta: "Choose Plan",
+    variant: "secondary"
+  },
+  {
+    name: "The Visionary",
+    price: "₦155,000",
+    priceSuffix: "/ year",
+    description: "The ultimate commitment for maximum growth, saving over 35% and eliminating renewal worries.",
+     features: [
+      "Unlimited Event Creation for 1 Full Year",
+      "All Core Features Included",
+      "Save ₦91,000 vs. paying monthly",
+      "Priority customer support",
     ],
     cta: "Choose Plan",
     variant: "secondary"
@@ -49,7 +67,7 @@ const tiers = [
 
 export default function PricingPage() {
   return (
-    <div className="container mx-auto max-w-5xl py-12 px-4 md:px-6">
+    <div className="container mx-auto max-w-7xl py-12 px-4 md:px-6">
        <div className="text-center mb-12">
         <h1 className="text-4xl font-bold font-headline">Find a Plan That's Right For You</h1>
         <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">
@@ -57,11 +75,14 @@ export default function PricingPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
         {tiers.map((tier) => (
-          <Card key={tier.name} className={`flex flex-col shadow-lg hover:shadow-2xl transition-shadow duration-300 ${tier.variant === 'default' ? 'border-primary ring-2 ring-primary' : ''}`}>
+          <Card key={tier.name} className={cn(
+            "flex flex-col shadow-lg hover:shadow-2xl transition-shadow duration-300",
+            tier.variant === 'default' && 'border-primary ring-2 ring-primary'
+            )}>
             <CardHeader>
-              <CardTitle className="font-headline">{tier.name}</CardTitle>
+              <CardTitle className="font-headline text-2xl">{tier.name}</CardTitle>
               <CardDescription>{tier.description}</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
@@ -72,7 +93,7 @@ export default function PricingPage() {
               <ul className="space-y-3">
                 {tier.features.map((feature) => (
                    <li key={feature} className="flex items-start">
-                     <Check className="h-5 w-5 text-primary mr-2 flex-shrink-0 mt-1" />
+                     <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-1" />
                      <span className="text-sm">{feature}</span>
                    </li>
                 ))}
