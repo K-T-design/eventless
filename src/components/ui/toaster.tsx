@@ -20,10 +20,10 @@ export function Toaster() {
       {toasts.map(function ({ id, title, description, action, ...props }) {
         return (
           <Toast key={id} {...props} className={cn(
+            props.variant === 'destructive' && "toast-error",
             props.className,
-            "max-w-md" // Limit width but allow more height
           )}>
-            <div className="grid gap-1 flex-grow min-w-0"> {/* Added min-w-0 for proper text truncation */}
+            <div className="grid gap-1 flex-grow min-w-0">
               {title && <ToastTitle>{title}</ToastTitle>}
               {description && (
                 <ToastDescription>{description}</ToastDescription>

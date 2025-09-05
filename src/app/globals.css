@@ -61,14 +61,10 @@
 /* Add to your global.css */
 @layer components {
   .toast-error {
-    max-width: 90vw !important;
-    max-height: 50vh !important;
+    @apply max-w-[90vw] md:max-w-[420px] max-h-[80vh];
   }
   
-  .toast-error .toast-description {
-    white-space: pre-wrap;
-    word-break: break-all;
-    overflow-y: auto;
-    max-height: 200px;
+  .toast-error [data-radix-toast-description] {
+      @apply max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-all;
   }
 }

@@ -119,14 +119,12 @@ const ToastDescription = React.forwardRef<
     <ToastPrimitives.Description
       ref={ref}
       className={cn(
-        "text-sm opacity-90 overflow-y-auto max-h-32 break-all", // Added styles for long text
+        "text-sm opacity-90",
         className
       )}
       {...props}
     >
-      <div ref={descriptionRef} className="whitespace-pre-wrap">
         {children}
-      </div>
     </ToastPrimitives.Description>
   );
 });
