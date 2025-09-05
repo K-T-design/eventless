@@ -15,7 +15,7 @@ import {
   Shield,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { collection, query, where, getCountFromServer } from "firebase/firestore";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
 import Image from "next/image";
 import type { UserProfile } from "@/types";
@@ -47,19 +47,18 @@ export function AdminSidebarNav({ className, userProfile }: { className?: string
     const [pendingApprovalCount, setPendingApprovalCount] = useState(0);
     const userRole = userProfile?.basicInfo.userType;
 
-    useEffect(() => {
-        const fetchCounts = async () => {
-            try {
-                const eventsRef = collection(firestore, "events");
-                const pendingQuery = query(eventsRef, where("status", "==", "pending"));
-                const pendingSnapshot = await getCountFromServer(pendingQuery);
-                setPendingApprovalCount(pendingSnapshot.data().count);
-            } catch (error) {
-                console.error("Failed to fetch notification counts:", error);
-            }
-        };
+     useEffect(() => {
+        const eventsRef = collection(firestore, "events");
+        const q = query(eventsRef, where("status", "==", "pending"));
+        
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            setPendingApprovalCount(snapshot.size);
+        }, (error) => {
+            console.error("Failed to listen to pending events count:", error);
+        });
 
-        fetchCounts();
+        // Cleanup listener on unmount
+        return () => unsubscribe();
     }, []);
 
     const allNavItems = [
@@ -87,7 +86,7 @@ export function AdminSidebarNav({ className, userProfile }: { className?: string
                     >
                     <item.icon className="h-4 w-4" />
                     {item.label}
-                    {item.count && item.count > 0 ? (
+                    {item.label === "Approval Queue" && item.count && item.count > 0 ? (
                         <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
                             {item.count}
                         </Badge>
