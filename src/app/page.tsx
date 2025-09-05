@@ -76,24 +76,6 @@ export default function Home() {
                            <p className="text-slate-600">Streamline entry to your events with our mobile-friendly QR code scanner. Validate tickets instantly and keep the line moving.</p>
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-                        <div className="p-4">
-                            <p className="text-4xl font-bold text-indigo-600">500+</p>
-                            <p className="text-slate-500">Events Created</p>
-                        </div>
-                         <div className="p-4">
-                            <p className="text-4xl font-bold text-indigo-600">10K+</p>
-                            <p className="text-slate-500">Tickets Sold</p>
-                        </div>
-                         <div className="p-4">
-                            <p className="text-4xl font-bold text-indigo-600">98%</p>
-                            <p className="text-slate-500">User Satisfaction</p>
-                        </div>
-                         <div className="p-4">
-                            <p className="text-4xl font-bold text-indigo-600">24/7</p>
-                            <p className="text-slate-500">Support Available</p>
-                        </div>
-                    </div>
                 </div>
                  <div className="bg-indigo-600 p-10 text-center text-white">
                     <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
