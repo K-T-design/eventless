@@ -4,14 +4,6 @@ import { Button } from "@/components/ui/button";
 import { PlusCircle, QrCode, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { Suspense } from "react";
-import dynamic from 'next/dynamic';
-
-const VanillaGlass = dynamic(() => import('@/components/vanilla-glass'), {
-  ssr: false,
-  loading: () => <div className="w-full h-full bg-gray-200 animate-pulse rounded-lg"></div>
-});
-
 
 export default function Home() {
   return (
@@ -111,20 +103,6 @@ export default function Home() {
                     </Button>
                 </div>
            </div>
-        </div>
-      </section>
-
-      <section className="w-full py-16 md:py-24 bg-white">
-        <div className="container mx-auto px-4 md:px-6">
-            <div className="text-center mb-12">
-                <h2 className="text-4xl md:text-5xl font-bold font-headline mb-4">A Touch of Magic</h2>
-                <p className="text-lg md:text-xl max-w-3xl mx-auto text-muted-foreground">Interact with the component below.</p>
-            </div>
-             <div className="h-[500px] relative rounded-lg overflow-hidden shadow-2xl bg-muted">
-                <Suspense fallback={<div className="w-full h-full bg-muted rounded-lg flex items-center justify-center"><p>Loading 3D Component...</p></div>}>
-                    <VanillaGlass />
-                </Suspense>
-            </div>
         </div>
       </section>
 
