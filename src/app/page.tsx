@@ -10,7 +10,7 @@ import dynamic from 'next/dynamic';
 
 const FluidGlass = dynamic(() => import('@/components/fluid-glass'), {
   ssr: false,
-  loading: () => <div className="h-[600px] w-full bg-muted rounded-lg flex items-center justify-center"><p>Loading 3D Component...</p></div>
+  loading: () => <div className="w-full h-full bg-muted rounded-lg flex items-center justify-center"><p>Loading 3D Component...</p></div>
 });
 
 
@@ -56,7 +56,7 @@ export default function Home() {
             className="rounded-2xl shadow-2xl overflow-hidden"
            >
                 <div 
-                    className="py-20 px-6 text-center text-white relative"
+                    className="py-20 px-6 text-center text-white relative bg-indigo-600"
                     style={{
                         backgroundImage: `linear-gradient(rgba(79, 70, 229, 0.9), rgba(79, 70, 229, 0.95)), url('https://ik.imagekit.io/t48u898g8/eventless_logo-removebg-preview%20(2).png?updatedAt=1757007814945')`,
                         backgroundSize: 'contain',
@@ -119,20 +119,11 @@ export default function Home() {
         <div className="container mx-auto px-4 md:px-6">
             <div className="text-center mb-12">
                 <h2 className="text-4xl md:text-5xl font-bold font-headline mb-4">A Touch of Magic</h2>
-                <p className="text-lg md:text-xl max-w-3xl mx-auto text-muted-foreground">Interact with our fluid glass component below.</p>
+                <p className="text-lg md:text-xl max-w-3xl mx-auto text-muted-foreground">Interact with the component below.</p>
             </div>
-             <div className="h-[600px] relative rounded-lg overflow-hidden shadow-2xl">
+             <div className="h-[500px] relative rounded-lg overflow-hidden shadow-2xl bg-muted">
                 <Suspense fallback={<div className="h-full w-full flex items-center justify-center bg-muted"><p>Loading 3D experience...</p></div>}>
-                    <FluidGlass 
-                        mode="lens"
-                        lensProps={{
-                          scale: 0.25,
-                          ior: 1.15,
-                          thickness: 5,
-                          chromaticAberration: 0.1,
-                          anisotropy: 0.01  
-                        }}
-                    />
+                    <FluidGlass mode="lens" />
                 </Suspense>
             </div>
         </div>
