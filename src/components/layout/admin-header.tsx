@@ -27,7 +27,7 @@ export function AdminHeader() {
                 <div className="p-4 border-b">
                      <Link href="/admin/dashboard" className="flex items-center gap-2 font-bold font-headline text-lg">
                         <Image src="https://ik.imagekit.io/t48u898g8/eventless_logo-removebg-preview%20(2).png?updatedAt=1757007814945" alt="E-Ventless Logo" width={32} height={32} className="rounded-full" />
-                        <span className="text-base">E-Ventless Admin</span>
+                        <span className="text-base text-primary">E-Ventless Admin</span>
                     </Link>
                 </div>
                 <AdminSidebarNav className="p-4" />

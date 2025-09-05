@@ -194,7 +194,7 @@ export default function SignUpPage() {
                  <div 
                     className={cn(
                         "p-3 rounded-md border text-sm font-medium flex items-center gap-3",
-                        userType === 'individual' ? "bg-blue-50 border-blue-200 text-blue-800" : "bg-purple-50 border-purple-200 text-purple-800"
+                        userType === 'individual' ? "bg-secondary/20 border-secondary text-primary" : "bg-primary/10 border-primary text-primary"
                     )}
                 >
                     {userType === 'individual' ? <User className="h-5 w-5"/> : <Building className="h-5 w-5"/>}

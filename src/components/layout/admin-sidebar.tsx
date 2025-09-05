@@ -27,7 +27,7 @@ export function AdminSidebar() {
         <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
           <Link href="/admin/dashboard" className="flex items-center gap-2 font-bold font-headline text-lg">
              <Image src="https://ik.imagekit.io/t48u898g8/eventless_logo-removebg-preview%20(2).png?updatedAt=1757007814945" alt="E-Ventless Logo" width={32} height={32} className="rounded-full" />
-            <span>E-Ventless Admin</span>
+            <span className="text-primary">E-Ventless</span> <span className="text-muted-foreground font-medium">Admin</span>
           </Link>
         </div>
         <div className="flex-1">

@@ -56,7 +56,7 @@ function AuthButtons() {
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-10 w-10">
                     <AvatarImage src={user.photoURL ?? ""} alt={user.displayName ?? ""} />
-                    <AvatarFallback>{userProfile?.basicInfo.name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase()}</AvatarFallback>
+                    <AvatarFallback className="bg-primary text-primary-foreground">{userProfile?.basicInfo.name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
                 </Button>
             </DropdownMenuTrigger>
@@ -124,28 +124,28 @@ function AuthButtons() {
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-card shadow-sm">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center px-4 md:px-6">
         <Link href="/" className="flex items-center gap-2 font-bold font-headline text-lg">
           <Image src="https://ik.imagekit.io/t48u898g8/eventless_logo-removebg-preview%20(2).png?updatedAt=1757007814945" alt="E-Ventless Logo" width={40} height={40} className="rounded-full" />
-          <span>E-Ventless</span>
+          <span className="text-primary">E-Ventless</span>
         </Link>
         <nav className="hidden md:flex gap-6 items-center mx-auto">
           <Link
             href="/discover"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
           >
             Discover
           </Link>
           <Link
             href="/create-event"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
           >
             Create Event
           </Link>
           <Link
             href="/pricing"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
           >
             Pricing
           </Link>
