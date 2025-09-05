@@ -4,14 +4,11 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { QrCode, Ticket, UserCheck, XCircle, Camera } from "lucide-react";
+import { QrCode, Ticket, UserCheck, XCircle, Camera, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jsQR from "jsqr";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { firestore } from "@/lib/firebase";
-import type { Ticket as TicketType, UserProfile } from "@/types";
-import { format } from "date-fns";
+import { validateAndCheckInTicket } from "./actions";
 
 type TicketStatus = "valid" | "used" | "invalid" | "loading";
 
@@ -26,6 +23,7 @@ export default function CheckInPage() {
   const [scannedData, setScannedData] = useState<ScannedTicketInfo | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [processing, setProcessing] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -100,56 +98,31 @@ export default function CheckInPage() {
   }, [isScanning, hasCameraPermission]);
   
   const handleQrCodeScanned = async (scannedQrData: string) => {
+    setProcessing(true);
     const prefix = "eventless-ticket:";
     if (!scannedQrData.startsWith(prefix)) {
         setScannedData({ status: 'invalid', id: "N/A", eventName: "N/A", attendee: "N/A" });
+        setProcessing(false);
         return;
     }
     
     const ticketId = scannedQrData.substring(prefix.length);
     setScannedData({ status: 'loading', id: ticketId, eventName: 'Verifying...', attendee: '...' });
     
-    try {
-        const ticketRef = doc(firestore, "tickets", ticketId);
-        const ticketSnap = await getDoc(ticketRef);
+    const result = await validateAndCheckInTicket(ticketId);
 
-        if (!ticketSnap.exists()) {
-            setScannedData({ status: 'invalid', id: ticketId, eventName: "N/A", attendee: "N/A" });
-            return;
-        }
-
-        const ticketData = ticketSnap.data() as TicketType;
-        
-        // Fetch user name for attendee info
-        const userRef = doc(firestore, "users", ticketData.userId);
-        const userSnap = await getDoc(userRef);
-        const attendeeName = userSnap.exists() ? (userSnap.data() as UserProfile).basicInfo.name : "Unknown Attendee";
-        
-        if (ticketData.status === 'used') {
-            setScannedData({ status: 'used', id: ticketId, eventName: ticketData.eventDetails?.title ?? "Event", attendee: attendeeName });
-        } else {
-             setScannedData({ status: 'valid', id: ticketId, eventName: ticketData.eventDetails?.title ?? "Event", attendee: attendeeName });
-        }
-
-    } catch (error) {
-        console.error("Error validating ticket:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not validate ticket.'});
-        setScannedData(null);
+    if (result.success) {
+      if(result.ticketData?.status === 'valid') {
+          toast({ title: "Valid Ticket", description: "This ticket has been checked in." });
+      } else {
+          toast({ variant: 'destructive', title: "Check-in Status", description: result.message });
+      }
+      setScannedData(result.ticketData!);
+    } else {
+       toast({ variant: 'destructive', title: 'Error', description: result.message});
+       setScannedData(null);
     }
-  };
-
-  const handleConfirmCheckin = async () => {
-    if (!scannedData || scannedData.status !== 'valid') return;
-
-    try {
-        const ticketRef = doc(firestore, "tickets", scannedData.id);
-        await updateDoc(ticketRef, { status: 'used' });
-        setScannedData({ ...scannedData, status: 'used' });
-         toast({ title: 'Success', description: 'Check-in confirmed.' });
-    } catch(error) {
-        console.error("Error confirming check-in:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not confirm check-in.'});
-    }
+    setProcessing(false);
   };
 
   const handleReset = () => {
@@ -162,7 +135,7 @@ export default function CheckInPage() {
       case "loading":
         return { text: "Verifying...", color: "text-blue-600", icon: <QrCode className="h-8 w-8 animate-pulse" /> };
       case "valid":
-        return { text: "Ticket Valid", color: "text-green-600", icon: <UserCheck className="h-8 w-8" /> };
+        return { text: "Check-in Success", color: "text-green-600", icon: <UserCheck className="h-8 w-8" /> };
       case "used":
         return { text: "Already Used", color: "text-yellow-600", icon: <Ticket className="h-8 w-8" /> };
       case "invalid":
@@ -176,7 +149,7 @@ export default function CheckInPage() {
     <div className="container mx-auto max-w-md py-12 px-4 flex flex-col items-center text-center">
       <h1 className="text-4xl font-bold font-headline mb-2">Event Check-in</h1>
       <p className="text-muted-foreground mb-8">
-        Scan attendee tickets to validate and process entry.
+        Scan attendee tickets to validate and process entry. Only event organizers can check-in tickets.
       </p>
       
        <canvas ref={canvasRef} className="hidden" />
@@ -202,9 +175,9 @@ export default function CheckInPage() {
             ) : (
                 <>
                     <Camera className="h-24 w-24 text-muted-foreground mb-6" />
-                    <Button size="lg" className="w-full" onClick={() => setIsScanning(true)}>
-                    <QrCode className="mr-2 h-5 w-5" />
-                    Scan Ticket
+                    <Button size="lg" className="w-full" onClick={() => setIsScanning(true)} disabled={processing}>
+                      {processing ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <QrCode className="mr-2 h-5 w-5" />}
+                      Scan Ticket
                     </Button>
                     <p className="text-sm text-muted-foreground mt-4">
                     Use your device's camera to scan the QR code on the ticket.
@@ -240,12 +213,7 @@ export default function CheckInPage() {
               <p className="text-sm font-semibold text-muted-foreground">Attendee</p>
               <p>{scannedData.attendee}</p>
             </div>
-
-            {scannedData.status === "valid" && (
-               <Button size="lg" className="w-full mt-4 bg-green-600 hover:bg-green-700" onClick={handleConfirmCheckin}>
-                Confirm Check-in
-              </Button>
-            )}
+            
             <Button size="lg" variant="outline" className="w-full" onClick={handleReset}>
               Scan Next Ticket
             </Button>
@@ -255,5 +223,3 @@ export default function CheckInPage() {
     </div>
   );
 }
-
-    
