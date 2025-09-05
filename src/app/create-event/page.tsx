@@ -100,7 +100,7 @@ export default function CreateEventPage() {
     name: "ticketTiers",
   });
   
-  const isSuperAdmin = userProfile?.basicInfo.userType === 'super_admin';
+  const isAdmin = userProfile?.basicInfo.userType === 'super_admin' || userProfile?.basicInfo.userType === 'admin';
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
@@ -119,7 +119,7 @@ export default function CreateEventPage() {
     // Check for active subscription or admin role
     const hasActiveSubscription = userProfile.subscription.status === 'active';
 
-    if (!isSuperAdmin && !hasActiveSubscription) {
+    if (!isAdmin && !hasActiveSubscription) {
         const isOrg = userProfile.basicInfo.userType === 'organizer';
         const limit = isOrg ? 8 : 5;
         const eventsUsed = userProfile.subscription.freeEventsUsed;
@@ -162,7 +162,7 @@ export default function CreateEventPage() {
         });
 
         // Only increment free event counter if user is not admin and does NOT have an active subscription
-        if (!isSuperAdmin && !hasActiveSubscription) {
+        if (!isAdmin && !hasActiveSubscription) {
             const userRef = doc(firestore, 'users', user.uid);
             batch.update(userRef, { 'subscription.freeEventsUsed': increment(1) });
         }
@@ -214,7 +214,7 @@ export default function CreateEventPage() {
   const eventLimit = userProfile?.basicInfo.userType === 'organizer' ? 8 : 5;
   const eventsUsed = userProfile?.subscription.freeEventsUsed ?? 0;
   const eventsLeft = Math.max(0, eventLimit - eventsUsed);
-  const canCreateEvent = isSuperAdmin || isSubscribed || eventsLeft > 0;
+  const canCreateEvent = isAdmin || isSubscribed || eventsLeft > 0;
 
   return (
     <div className="container mx-auto max-w-3xl py-12 px-4">
@@ -225,7 +225,7 @@ export default function CreateEventPage() {
         </p>
       </div>
 
-       {isSuperAdmin ? (
+       {isAdmin ? (
             <Alert className="mb-8 bg-green-50 border-green-200 text-green-800">
                  <Shield className="h-4 w-4 text-green-600" />
                 <AlertTitle className="font-bold">Admin Mode</AlertTitle>

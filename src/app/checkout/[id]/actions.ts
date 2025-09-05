@@ -13,7 +13,6 @@ type VerifyPaymentInput = {
   userId: string;
   tier: TicketTier;
   quantity: number;
-  isAdmin: boolean;
 };
 
 const SERVICE_FEE = 150;
@@ -44,15 +43,15 @@ async function createAndSendTicket(
 export async function verifyPaymentAndCreateTicket(
   input: VerifyPaymentInput
 ): Promise<{ success: boolean; message: string; ticketId?: string }> {
-  const { reference, eventId, userId, tier, quantity, isAdmin } = input;
+  const { reference, eventId, userId, tier, quantity } = input;
   const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
   const isFreeTicket = tier.price === 0;
 
   try {
     let transactionAmount = 0;
     
-    // Admins and free tickets bypass payment verification
-    if (!isAdmin && !isFreeTicket) {
+    // Free tickets bypass payment verification
+    if (!isFreeTicket) {
       if (!paystackSecretKey) {
         throw new Error('Paystack secret key is not configured.');
       }
@@ -78,7 +77,7 @@ export async function verifyPaymentAndCreateTicket(
 
     // Check if a paid transaction has already been processed to prevent replay attacks.
     const transactionSnapshot = await firestore.collection('transactions').where('reference', '==', reference).limit(1).get();
-    if (!transactionSnapshot.empty && !isFreeTicket && !isAdmin) {
+    if (!transactionSnapshot.empty && !isFreeTicket) {
         // This is not an error, just an indication that the webhook might have run first.
         return { success: true, message: "This transaction has already been processed."};
     }
@@ -138,14 +137,13 @@ export async function verifyPaymentAndCreateTicket(
             ticketId: createdTicketIds.join(','),
             amount: transactionAmount,
             status: 'succeeded',
-            paymentGateway: isAdmin ? 'admin' : isFreeTicket ? 'free' : 'paystack',
+            paymentGateway: isFreeTicket ? 'free' : 'paystack',
             transactionDate: FieldValue.serverTimestamp() as Timestamp,
-            reference: isFreeTicket || isAdmin ? `free-${createdTicketIds[0]}` : reference,
+            reference: isFreeTicket ? `free-${createdTicketIds[0]}` : reference,
         };
         transaction.set(transactionRef, newTransaction);
         
-        // Admins don't generate revenue for organizers
-        if (ticketRevenue > 0 && !isAdmin) {
+        if (ticketRevenue > 0) {
             transaction.update(organizerRef, {
                 'payouts.balance': FieldValue.increment(ticketRevenue),
                 'payouts.status': 'pending'
