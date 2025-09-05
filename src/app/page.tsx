@@ -8,7 +8,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import dynamic from 'next/dynamic';
 
-const FluidGlass = dynamic(() => import('@/components/fluid-glass'), {
+const SimpleCube = dynamic(() => import('@/components/simple-cube'), {
   ssr: false,
   loading: () => <div className="w-full h-full bg-muted rounded-lg flex items-center justify-center"><p>Loading 3D Component...</p></div>
 });
@@ -122,8 +122,8 @@ export default function Home() {
                 <p className="text-lg md:text-xl max-w-3xl mx-auto text-muted-foreground">Interact with the component below.</p>
             </div>
              <div className="h-[500px] relative rounded-lg overflow-hidden shadow-2xl bg-muted">
-                <Suspense fallback={<div className="h-full w-full flex items-center justify-center bg-muted"><p>Loading 3D experience...</p></div>}>
-                    <FluidGlass mode="lens" />
+                <Suspense fallback={<div className="w-full h-full bg-muted rounded-lg flex items-center justify-center"><p>Loading 3D Component...</p></div>}>
+                    <SimpleCube />
                 </Suspense>
             </div>
         </div>
