@@ -33,13 +33,14 @@ import { Calendar } from "@/components/ui/calendar";
 import { useEffect, useState } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth, firestore } from "@/lib/firebase";
-import { collection, writeBatch, doc, getDoc, increment, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { EVENT_CATEGORIES } from "@/lib/categories";
 import { NIGERIAN_UNIVERSITIES } from "@/lib/universities";
 import type { UserProfile } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
+import { createEvent } from "./actions";
 
 const ticketTierSchema = z.object({
   name: z.string().min(1, "Tier name is required."),
@@ -105,86 +106,23 @@ export default function CreateEventPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
 
-    if (!user || !userProfile) {
-        toast({
-            variant: "destructive",
-            title: "Not Authenticated",
-            description: "You must be logged in to create an event."
-        });
-        setLoading(false);
-        router.push('/auth/signin');
-        return;
-    }
-    
-    // Check for active subscription or admin role
-    const hasActiveSubscription = userProfile.subscription.status === 'active';
+    const result = await createEvent(values);
 
-    if (!isAdmin && !hasActiveSubscription) {
-        const isOrg = userProfile.basicInfo.userType === 'organizer';
-        const limit = isOrg ? 8 : 5;
-        const eventsUsed = userProfile.subscription.freeEventsUsed;
+    setLoading(false);
 
-        if (eventsUsed >= limit) {
-            toast({
-                variant: "destructive",
-                title: "Free Limit Reached",
-                description: `You have used all your free events for this month. Please upgrade your plan.`,
-            });
-            setLoading(false);
-            return;
-        }
-    }
-
-
-    try {
-        const batch = writeBatch(firestore);
-
-        const newEventRef = doc(collection(firestore, "events"));
-        const newEventData = {
-            title: values.title,
-            description: values.description,
-            university: values.university,
-            category: values.category,
-            location: values.location,
-            date: values.date,
-            time: values.time,
-            organizerId: user.uid,
-            status: 'pending' as const,
-            createdAt: serverTimestamp(),
-            imageUrl: "https://picsum.photos/1200/600",
-            imageHint: "event poster placeholder",
-        };
-        batch.set(newEventRef, newEventData);
-
-        values.ticketTiers.forEach(tier => {
-            const tierRef = doc(collection(firestore, `events/${newEventRef.id}/ticketTiers`));
-            batch.set(tierRef, tier);
-        });
-
-        // Only increment free event counter if user is not admin and does NOT have an active subscription
-        if (!isAdmin && !hasActiveSubscription) {
-            const userRef = doc(firestore, 'users', user.uid);
-            batch.update(userRef, { 'subscription.freeEventsUsed': increment(1) });
-        }
-        
-        await batch.commit();
-
-        toast({
-            title: "Event Submitted!",
-            description: "Your event has been submitted for approval.",
-        });
-        
-        form.reset();
-        router.push(`/events/${newEventRef.id}`);
-
-    } catch (error: any) {
-         toast({
-            variant: "destructive",
-            title: "Error Creating Event",
-            description: error.message,
-        });
-    } finally {
-        setLoading(false);
+    if (result.success) {
+      toast({
+        title: "Event Submitted!",
+        description: result.message,
+      });
+      form.reset();
+      router.push(`/events/${result.eventId}`);
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Error Creating Event",
+        description: result.message,
+      });
     }
   }
   
