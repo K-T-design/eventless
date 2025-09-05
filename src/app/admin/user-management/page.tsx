@@ -311,6 +311,7 @@ export default function UserManagementPage() {
                         <SelectContent>
                             <SelectItem value="individual">Individual</SelectItem>
                             <SelectItem value="organizer">Organizer</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
                             <SelectItem value="super_admin">Super Admin</SelectItem>
                         </SelectContent>
                     </Select>

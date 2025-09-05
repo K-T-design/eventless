@@ -12,15 +12,18 @@ import {
   Wallet,
   Inbox,
   AlertCircle,
-  LayoutDashboard,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { collection, query, where, getCountFromServer } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
 import Image from "next/image";
+import type { UserProfile } from "@/types";
 
+type AdminSidebarProps = {
+  userProfile: UserProfile | null;
+};
 
-export function AdminSidebar() {
+export function AdminSidebar({ userProfile }: AdminSidebarProps) {
   return (
     <aside className="hidden border-r bg-card md:block">
       <div className="flex h-full max-h-screen flex-col gap-2">
@@ -31,16 +34,17 @@ export function AdminSidebar() {
           </Link>
         </div>
         <div className="flex-1">
-            <AdminSidebarNav />
+            <AdminSidebarNav userProfile={userProfile} />
         </div>
       </div>
     </aside>
   );
 }
 
-export function AdminSidebarNav({ className }: { className?: string }) {
+export function AdminSidebarNav({ className, userProfile }: { className?: string, userProfile: UserProfile | null }) {
     const pathname = usePathname();
     const [pendingApprovalCount, setPendingApprovalCount] = useState(0);
+    const userRole = userProfile?.basicInfo.userType;
 
     useEffect(() => {
         const fetchCounts = async () => {
@@ -57,24 +61,26 @@ export function AdminSidebarNav({ className }: { className?: string }) {
         fetchCounts();
     }, []);
 
-    const navItems = [
-        { href: "/admin/dashboard", label: "Dashboard Home", icon: Home },
-        { href: "/admin/approval-queue", label: "Approval Queue", icon: AlertCircle, count: pendingApprovalCount },
-        { href: "/admin/user-management", label: "User Management", icon: Users },
-        { href: "/admin/event-management", label: "Event Management", icon: Calendar },
-        { href: "/admin/financials", label: "Financials", icon: Wallet },
-        { href: "/admin/support-inbox", label: "Support Inbox", icon: Inbox },
+    const allNavItems = [
+        { href: "/admin/dashboard", label: "Dashboard Home", icon: Home, roles: ['super_admin', 'admin'] },
+        { href: "/admin/approval-queue", label: "Approval Queue", icon: AlertCircle, count: pendingApprovalCount, roles: ['super_admin', 'admin'] },
+        { href: "/admin/event-management", label: "Event Management", icon: Calendar, roles: ['super_admin', 'admin'] },
+        { href: "/admin/user-management", label: "User Management", icon: Users, roles: ['super_admin'] },
+        { href: "/admin/financials", label: "Financials", icon: Wallet, roles: ['super_admin'] },
+        { href: "/admin/support-inbox", label: "Support Inbox", icon: Inbox, roles: ['super_admin'] },
     ];
     
+    const visibleNavItems = allNavItems.filter(item => userRole && item.roles.includes(userRole));
+
     return (
         <nav className={cn("grid items-start px-2 text-sm font-medium lg:px-4", className)}>
-            {navItems.map(item => (
+            {visibleNavItems.map(item => (
                 <Link
                     key={item.label}
                     href={item.href}
                     className={cn(
                         "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
-                        pathname === item.href && "bg-muted text-primary"
+                        pathname.startsWith(item.href) && "bg-muted text-primary"
                     )}
                     >
                     <item.icon className="h-4 w-4" />

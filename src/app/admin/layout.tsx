@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, firestore } from '@/lib/firebase';
@@ -11,6 +11,12 @@ import { Loader2 } from 'lucide-react';
 import { AdminHeader } from '@/components/layout/admin-header';
 import { AdminSidebar } from '@/components/layout/admin-sidebar';
 
+const SUPER_ADMIN_ONLY_PAGES = [
+  '/admin/user-management',
+  '/admin/financials',
+  '/admin/support-inbox'
+];
+
 export default function AdminLayout({
   children,
 }: {
@@ -18,7 +24,8 @@ export default function AdminLayout({
 }) {
   const [user, authLoading] = useAuthState(auth);
   const router = useRouter();
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const pathname = usePathname();
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
@@ -35,12 +42,21 @@ export default function AdminLayout({
         const userDocSnap = await getDoc(userDocRef);
 
         if (userDocSnap.exists()) {
-          const userProfile = userDocSnap.data() as UserProfile;
-          if (userProfile.basicInfo.userType === 'super_admin') {
-            setIsSuperAdmin(true);
-          } else {
-            router.push('/'); // Redirect to home if not super admin
+          const profile = userDocSnap.data() as UserProfile;
+          setUserProfile(profile);
+          const userType = profile.basicInfo.userType;
+          
+          if (userType !== 'super_admin' && userType !== 'admin') {
+             router.push('/'); // Not an admin at all
+             return;
           }
+
+          // If a regular admin tries to access a super_admin page, redirect them
+          if (userType === 'admin' && SUPER_ADMIN_ONLY_PAGES.some(page => pathname.startsWith(page))) {
+            router.push('/admin/dashboard');
+            return;
+          }
+
         } else {
            router.push('/'); // Redirect if user profile doesn't exist
         }
@@ -53,7 +69,7 @@ export default function AdminLayout({
     };
 
     checkAdminStatus();
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, pathname]);
 
   if (checkingAuth || authLoading) {
     return (
@@ -63,8 +79,7 @@ export default function AdminLayout({
     );
   }
 
-  if (!isSuperAdmin) {
-    // This part should ideally not be reached due to redirects, but serves as a final guard.
+  if (!userProfile || !['super_admin', 'admin'].includes(userProfile.basicInfo.userType)) {
      return (
       <div className="flex justify-center items-center min-h-screen">
         <p>Access Denied. You are not authorized to view this page.</p>
@@ -74,7 +89,7 @@ export default function AdminLayout({
 
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
-      <AdminSidebar />
+      <AdminSidebar userProfile={userProfile} />
       <div className="flex flex-col">
         <AdminHeader />
         <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-muted/40">
