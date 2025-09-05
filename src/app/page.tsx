@@ -1,4 +1,3 @@
-
 "use client"
 
 import { Button } from "@/components/ui/button";
@@ -8,9 +7,9 @@ import Link from "next/link";
 import { Suspense } from "react";
 import dynamic from 'next/dynamic';
 
-const SimpleCube = dynamic(() => import('@/components/simple-cube'), {
+const VanillaGlass = dynamic(() => import('@/components/vanilla-glass'), {
   ssr: false,
-  loading: () => <div className="w-full h-full bg-muted rounded-lg flex items-center justify-center"><p>Loading 3D Component...</p></div>
+  loading: () => <div className="w-full h-64 bg-gray-200 animate-pulse rounded-lg"></div>
 });
 
 
@@ -123,7 +122,7 @@ export default function Home() {
             </div>
              <div className="h-[500px] relative rounded-lg overflow-hidden shadow-2xl bg-muted">
                 <Suspense fallback={<div className="w-full h-full bg-muted rounded-lg flex items-center justify-center"><p>Loading 3D Component...</p></div>}>
-                    <SimpleCube />
+                    <VanillaGlass />
                 </Suspense>
             </div>
         </div>
