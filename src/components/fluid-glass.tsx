@@ -160,6 +160,7 @@ function NavItems({ items }: any) {
     desktop: { max: Infinity, spacing: 0.3, fontSize: 0.045 }
   };
   const getDevice = () => {
+    if (typeof window === 'undefined') return 'desktop';
     const w = window.innerWidth;
     return w <= DEVICE.mobile.max ? 'mobile' : w <= DEVICE.tablet.max ? 'tablet' : 'desktop';
   };
@@ -170,7 +171,6 @@ function NavItems({ items }: any) {
     const onResize = () => setDevice(getDevice());
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const { spacing, fontSize } = DEVICE[device];
@@ -227,6 +227,7 @@ function Images() {
   const { height } = useThree(s => s.viewport);
 
   useFrame(() => {
+    if (!group.current) return;
     group.current.children[0].material.zoom = 1 + data.range(0, 1 / 3) / 3;
     group.current.children[1].material.zoom = 1 + data.range(0, 1 / 3) / 3;
     group.current.children[2].material.zoom = 1 + data.range(1.15 / 3, 1 / 3) / 2;
@@ -244,22 +245,22 @@ function Images() {
       <Image
         position={[2, 0, 3]}
         scale={3}
-        url="https://images.unsplash.com/photo-1478436127897-769e1b3f0f36?q=80&w=3270&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+        url="https://images.unsplash.com/photo-1478436127897-769e1b3f0f36?q=80&w=3270&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%D%3D"
       />
       <Image
         position={[-2.05, -height, 6]}
         scale={[1, 3, 1]}
-        url="https://images.unsplash.com/photo-1513682121497-80211f36a7d3?q=80&w=3388&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+        url="https://images.unsplash.com/photo-1513682121497-80211f36a7d3?q=80&w=3388&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%D%3D"
       />
       <Image
         position={[-0.6, -height, 9]}
         scale={[1, 2, 1]}
-        url="https://images.unsplash.com/photo-1516205651411-aef33a44f7c2?q=80&w=2843&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+        url="https://images.unsplash.com/photo-1516205651411-aef33a44f7c2?q=80&w=2843&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%D%3D"
       />
       <Image
         position={[0.75, -height, 10.5]}
         scale={1.5}
-        url="https://images.unsplash.com/photo-1505069190533-da1c9af13346?q=80&w=3387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+        url="https://images.unsplash.com/photo-1505069190533-da1c9af13346?q=80&w=3387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%D%3D"
       />
     </group>
   );
@@ -272,6 +273,7 @@ function Typography() {
     desktop: { fontSize: 0.7 }
   };
   const getDevice = () => {
+     if (typeof window === 'undefined') return 'desktop';
     const w = window.innerWidth;
     return w <= 639 ? 'mobile' : w <= 1023 ? 'tablet' : 'desktop';
   };
@@ -282,7 +284,6 @@ function Typography() {
     const onResize = () => setDevice(getDevice());
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const { fontSize } = DEVICE[device];
