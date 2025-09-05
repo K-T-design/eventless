@@ -47,9 +47,9 @@ export default function Home() {
             className="rounded-2xl shadow-2xl overflow-hidden"
            >
                 <div 
-                    className="py-20 px-6 text-center text-white relative bg-indigo-600"
+                    className="py-20 px-6 text-center text-white relative bg-orange-600"
                     style={{
-                        backgroundImage: `linear-gradient(rgba(79, 70, 229, 0.9), rgba(79, 70, 229, 0.95)), url('https://ik.imagekit.io/t48u898g8/eventless_logo-removebg-preview%20(2).png?updatedAt=1757007814945')`,
+                        backgroundImage: `linear-gradient(rgba(234, 88, 12, 0.9), rgba(234, 88, 12, 0.95)), url('https://ik.imagekit.io/t48u898g8/eventless_logo-removebg-preview%20(2).png?updatedAt=1757007814945')`,
                         backgroundSize: 'contain',
                         backgroundPosition: 'center',
                         backgroundRepeat: 'no-repeat',
@@ -61,26 +61,26 @@ export default function Home() {
                 <div className="p-8 md:p-16 bg-slate-50">
                     <div className="grid md:grid-cols-3 gap-8 mb-16">
                         <div className="text-center p-6 bg-white rounded-xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all">
-                           <Search className="h-12 w-12 text-indigo-600 mx-auto mb-4"/>
+                           <Search className="h-12 w-12 text-orange-600 mx-auto mb-4"/>
                            <h3 className="text-xl font-bold mb-2 text-slate-800">Event Discovery</h3>
                            <p className="text-slate-600">Easily find events from your university. Filter by category, search by name, and never miss out on what's happening on campus.</p>
                         </div>
                          <div className="text-center p-6 bg-white rounded-xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all">
-                           <PlusCircle className="h-12 w-12 text-indigo-600 mx-auto mb-4"/>
+                           <PlusCircle className="h-12 w-12 text-orange-600 mx-auto mb-4"/>
                            <h3 className="text-xl font-bold mb-2 text-slate-800">Simple Event Creation</h3>
                            <p className="text-slate-600">Organizing an event? Create your event page in minutes with our intuitive form. Free plans available for individuals and small groups.</p>
                         </div>
                          <div className="text-center p-6 bg-white rounded-xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all">
-                           <QrCode className="h-12 w-12 text-indigo-600 mx-auto mb-4"/>
+                           <QrCode className="h-12 w-12 text-orange-600 mx-auto mb-4"/>
                            <h3 className="text-xl font-bold mb-2 text-slate-800">Effortless Check-in</h3>
                            <p className="text-slate-600">Streamline entry to your events with our mobile-friendly QR code scanner. Validate tickets instantly and keep the line moving.</p>
                         </div>
                     </div>
                 </div>
-                 <div className="bg-indigo-600 p-10 text-center text-white">
+                 <div className="bg-orange-600 p-10 text-center text-white">
                     <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
                     <p className="max-w-xl mx-auto mb-6 opacity-90">Join thousands of event organizers and attendees who are already using our platform to create amazing experiences.</p>
-                    <Button size="lg" asChild className="bg-white text-indigo-600 font-bold hover:bg-slate-100 rounded-full px-8 py-6 text-base shadow-lg hover:-translate-y-0.5 transition-transform">
+                    <Button size="lg" asChild className="bg-white text-orange-600 font-bold hover:bg-slate-100 rounded-full px-8 py-6 text-base shadow-lg hover:-translate-y-0.5 transition-transform">
                         <Link href="/create-event">Create Your Event Now</Link>
                     </Button>
                 </div>
