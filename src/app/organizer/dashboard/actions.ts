@@ -47,8 +47,8 @@ export async function getOrganizerDashboardData(organizerId: string): Promise<Or
       return {
         id: doc.id,
         ...data,
-        date: data.date instanceof Timestamp ? data.date.toDate() : new Date(data.date),
-        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
+        date: (data.date as Timestamp).toDate(),
+        createdAt: (data.createdAt as Timestamp).toDate(),
       } as Event;
     });
 
