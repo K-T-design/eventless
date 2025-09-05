@@ -73,7 +73,7 @@ export default function ContactSupportPage() {
         subject: values.subject,
         message: values.message,
         category: values.category,
-      }, user.uid);
+      });
 
       if (result.success) {
         toast({
