@@ -26,7 +26,7 @@ export type Event = {
   createdAt: Date;
 };
 
-export type UserType = 'individual' | 'organizer' | 'super_admin';
+export type UserType = 'individual' | 'organizer' | 'super_admin' | 'admin';
 
 export type OrgType = 'Student Union' | 'University Department' | 'Club/Society' | 'Business' | 'Other';
 
@@ -41,7 +41,7 @@ export interface UserProfile {
   };
   subscription: {
     status: 'inactive' | 'active' | 'expired';
-    planType: 'monthly' | 'quarterly' | 'yearly' | null;
+    planType: 'weekly' | 'monthly' | 'quarterly' | 'yearly' | null;
     expiryDate: Timestamp | null;
     freeEventsUsed: number;
   };
@@ -87,7 +87,7 @@ export type Transaction = {
     ticketId: string;
     amount: number;
     status: 'succeeded' | 'failed' | 'pending';
-    paymentGateway: 'paystack' | 'free' | 'other';
+    paymentGateway: 'paystack' | 'free' | 'admin' | 'other';
     transactionDate: Timestamp;
     // Paystack specific reference
     reference: string;

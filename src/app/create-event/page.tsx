@@ -25,7 +25,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Info, Calendar as CalendarIcon, Loader2, Trash2, PlusCircle } from "lucide-react";
+import { Info, Calendar as CalendarIcon, Loader2, Trash2, PlusCircle, Shield } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -99,6 +99,8 @@ export default function CreateEventPage() {
     control: form.control,
     name: "ticketTiers",
   });
+  
+  const isSuperAdmin = userProfile?.basicInfo.userType === 'super_admin';
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
@@ -114,10 +116,10 @@ export default function CreateEventPage() {
         return;
     }
     
-    // Check for active subscription first
+    // Check for active subscription or admin role
     const hasActiveSubscription = userProfile.subscription.status === 'active';
 
-    if (!hasActiveSubscription) {
+    if (!isSuperAdmin && !hasActiveSubscription) {
         const isOrg = userProfile.basicInfo.userType === 'organizer';
         const limit = isOrg ? 8 : 5;
         const eventsUsed = userProfile.subscription.freeEventsUsed;
@@ -159,8 +161,8 @@ export default function CreateEventPage() {
             batch.set(tierRef, tier);
         });
 
-        // Only increment free event counter if user does NOT have an active subscription
-        if (!hasActiveSubscription) {
+        // Only increment free event counter if user is not admin and does NOT have an active subscription
+        if (!isSuperAdmin && !hasActiveSubscription) {
             const userRef = doc(firestore, 'users', user.uid);
             batch.update(userRef, { 'subscription.freeEventsUsed': increment(1) });
         }
@@ -212,6 +214,7 @@ export default function CreateEventPage() {
   const eventLimit = userProfile?.basicInfo.userType === 'organizer' ? 8 : 5;
   const eventsUsed = userProfile?.subscription.freeEventsUsed ?? 0;
   const eventsLeft = Math.max(0, eventLimit - eventsUsed);
+  const canCreateEvent = isSuperAdmin || isSubscribed || eventsLeft > 0;
 
   return (
     <div className="container mx-auto max-w-3xl py-12 px-4">
@@ -222,7 +225,15 @@ export default function CreateEventPage() {
         </p>
       </div>
 
-       {userProfile ? (
+       {isSuperAdmin ? (
+            <Alert className="mb-8 bg-green-50 border-green-200 text-green-800">
+                 <Shield className="h-4 w-4 text-green-600" />
+                <AlertTitle className="font-bold">Admin Mode</AlertTitle>
+                <AlertDescription>
+                    Event creation limits do not apply to your account.
+                </AlertDescription>
+            </Alert>
+       ) : userProfile ? (
             <Alert className="mb-8 bg-primary/5 border-primary/20">
                 <Info className="h-4 w-4 text-primary" />
                 <AlertTitle className="text-primary font-bold">
@@ -479,7 +490,7 @@ export default function CreateEventPage() {
                 </div>
             </div>
 
-          <Button type="submit" size="lg" className="w-full" disabled={loading || isLoading || (eventsLeft <= 0 && !isSubscribed)}>
+          <Button type="submit" size="lg" className="w-full" disabled={loading || isLoading || !canCreateEvent}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Submit for Approval
           </Button>

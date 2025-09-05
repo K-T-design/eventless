@@ -16,7 +16,7 @@ import {
   Loader2,
   MapPin,
   Ticket as TicketIcon,
-  AlertTriangle,
+  Shield,
   Minus,
   Plus,
 } from "lucide-react";
@@ -30,7 +30,7 @@ import {
   query,
   Timestamp,
 } from "firebase/firestore";
-import type { Event, TicketTier } from "@/types";
+import type { Event, TicketTier, UserProfile } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -49,6 +49,8 @@ function CheckoutContent({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [user, authLoading] = useAuthState(auth);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -62,9 +64,10 @@ function CheckoutContent({ params }: { params: { id: string } }) {
   }, []);
 
   useEffect(() => {
-    if (params.id) {
-      const fetchEvent = async () => {
+    const fetchEventAndProfile = async () => {
         setLoading(true);
+        setProfileLoading(true);
+
         const eventId = params.id;
         const tierName = searchParams.get("tier");
 
@@ -78,48 +81,63 @@ function CheckoutContent({ params }: { params: { id: string } }) {
           return;
         }
 
-        const eventDocRef = doc(firestore, "events", eventId);
-        const eventDocSnap = await getDoc(eventDocRef);
+        try {
+            const eventDocRef = doc(firestore, "events", eventId);
+            const eventDocSnap = await getDoc(eventDocRef);
 
-        if (eventDocSnap.exists()) {
-          const data = eventDocSnap.data();
-          const fetchedEvent = {
-            id: eventDocSnap.id,
-            ...data,
-            date: (data.date as Timestamp).toDate(),
-          } as Event;
-          setEvent(fetchedEvent);
-          
-          const tiersQuery = query(collection(eventDocRef, "ticketTiers"));
-          const tiersSnapshot = await getSubDocs(tiersQuery);
-          const fetchedTiers = tiersSnapshot.docs.map(doc => doc.data() as TicketTier);
-          
-          const tier = fetchedTiers.find(t => t.name === tierName);
-          if (tier) {
-            setSelectedTier(tier);
-          } else {
-             toast({
-              variant: "destructive",
-              title: "Error",
-              description: "Selected ticket tier not found.",
-            });
-            router.push(`/events/${eventId}`);
-          }
-
-        } else {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Event not found.",
-          });
-          router.push("/discover");
+            if (eventDocSnap.exists()) {
+                const data = eventDocSnap.data();
+                const fetchedEvent = {
+                    id: eventDocSnap.id,
+                    ...data,
+                    date: (data.date as Timestamp).toDate(),
+                } as Event;
+                setEvent(fetchedEvent);
+                
+                const tiersQuery = query(collection(eventDocRef, "ticketTiers"));
+                const tiersSnapshot = await getSubDocs(tiersQuery);
+                const fetchedTiers = tiersSnapshot.docs.map(doc => doc.data() as TicketTier);
+                
+                const tier = fetchedTiers.find(t => t.name === tierName);
+                if (tier) {
+                    setSelectedTier(tier);
+                } else {
+                    throw new Error("Selected ticket tier not found.");
+                }
+            } else {
+                throw new Error("Event not found.");
+            }
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Error", description: error.message });
+            router.push("/discover");
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
-      };
-
-      fetchEvent();
+    };
+    
+     if (params.id) {
+       fetchEventAndProfile();
     }
   }, [params.id, router, toast, searchParams]);
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+        if (user) {
+            setProfileLoading(true);
+            const userDocRef = doc(firestore, 'users', user.uid);
+            const userDocSnap = await getDoc(userDocRef);
+            if (userDocSnap.exists()) {
+                setUserProfile(userDocSnap.data() as UserProfile);
+            }
+            setProfileLoading(false);
+        } else if (!authLoading) {
+            setProfileLoading(false);
+        }
+    };
+    fetchUserProfile();
+  }, [user, authLoading]);
+
+  const isSuperAdmin = userProfile?.basicInfo.userType === 'super_admin';
 
   const handlePurchase = async (reference: string) => {
     if (!user || !event || !selectedTier) return;
@@ -132,6 +150,7 @@ function CheckoutContent({ params }: { params: { id: string } }) {
         userId: user.uid,
         tier: selectedTier,
         quantity,
+        isAdmin: isSuperAdmin,
       });
 
       if (result.success) {
@@ -163,7 +182,7 @@ function CheckoutContent({ params }: { params: { id: string } }) {
   };
 
   const ticketPrice = selectedTier?.price ?? 0;
-  const totalPrice = ticketPrice > 0 ? (ticketPrice * quantity) + SERVICE_FEE : 0;
+  const totalPrice = isSuperAdmin ? 0 : ticketPrice > 0 ? (ticketPrice * quantity) + SERVICE_FEE : 0;
   
   const paystackConfig = {
     reference: new Date().getTime().toString(),
@@ -172,7 +191,7 @@ function CheckoutContent({ params }: { params: { id: string } }) {
     publicKey: paystackPublicKey,
   };
 
-  if (loading || authLoading) {
+  if (loading || authLoading || profileLoading) {
     return (
       <div className="container mx-auto max-w-lg py-12 px-4">
          <Card>
@@ -240,6 +259,13 @@ function CheckoutContent({ params }: { params: { id: string } }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          {isSuperAdmin && (
+             <Alert className="bg-green-50 border-green-200 text-green-800">
+                <Shield className="h-4 w-4 text-green-600" />
+                <AlertTitle className="font-bold">Admin Mode</AlertTitle>
+                <AlertDescription>No payment required. Tickets are free for your account.</AlertDescription>
+            </Alert>
+          )}
           <div className="p-4 rounded-lg bg-muted/50 border flex items-start gap-4">
             <div className="relative w-24 h-24 rounded-md overflow-hidden shrink-0">
               <Image
@@ -286,11 +312,11 @@ function CheckoutContent({ params }: { params: { id: string } }) {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <p className="text-muted-foreground">Ticket Subtotal:</p>
-                <p>₦{(ticketPrice * quantity).toLocaleString()}</p>
+                <p>₦{(isSuperAdmin ? 0 : ticketPrice * quantity).toLocaleString()}</p>
               </div>
                <div className="flex justify-between">
                 <p className="text-muted-foreground">Service Fee:</p>
-                <p>{ticketPrice > 0 ? `₦${SERVICE_FEE.toLocaleString()}` : '₦0'}</p>
+                <p>{isSuperAdmin || ticketPrice === 0 ? '₦0' : `₦${SERVICE_FEE.toLocaleString()}`}</p>
               </div>
               <Separator />
               <div className="flex justify-between font-bold text-base">
@@ -301,7 +327,21 @@ function CheckoutContent({ params }: { params: { id: string } }) {
           </div>
         </CardContent>
         <CardFooter>
-          {totalPrice > 0 ? (
+          {isSuperAdmin ? (
+             <Button size="lg" className="w-full" onClick={() => handlePurchase(`admin-${new Date().getTime()}`)} disabled={processing || authLoading || !user}>
+                 {processing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <TicketIcon className="mr-2" />
+                    Get Free Ticket (Admin)
+                  </>
+                )}
+             </Button>
+          ) : totalPrice > 0 ? (
             <PaystackButton
               className="w-full"
               {...paystackConfig}
