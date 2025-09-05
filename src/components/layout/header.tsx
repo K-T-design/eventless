@@ -50,6 +50,7 @@ function AuthButtons() {
   }
 
   if (user) {
+    const isAdmin = userProfile?.basicInfo.userType === 'admin' || userProfile?.basicInfo.userType === 'super_admin';
     return (
        <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -70,7 +71,7 @@ function AuthButtons() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-              {userProfile?.basicInfo.userType === 'super_admin' && (
+              {isAdmin && (
                  <DropdownMenuItem asChild>
                     <Link href="/admin/dashboard">
                       <LayoutDashboard className="mr-2 h-4 w-4" />
