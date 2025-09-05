@@ -9,7 +9,7 @@ import dynamic from 'next/dynamic';
 
 const VanillaGlass = dynamic(() => import('@/components/vanilla-glass'), {
   ssr: false,
-  loading: () => <div className="w-full h-64 bg-gray-200 animate-pulse rounded-lg"></div>
+  loading: () => <div className="w-full h-full bg-gray-200 animate-pulse rounded-lg"></div>
 });
 
 
