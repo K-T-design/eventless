@@ -6,7 +6,8 @@ export async function sendTicketEmail(toEmail: string, userName: string, eventNa
 
   if (!brevoApiKey) {
     console.error("Cannot send email: BREVO_API_KEY is not configured.");
-    throw new Error("Email service is not configured on the server.");
+    // Return a failed status instead of throwing an error that might crash a checkout flow.
+    return { success: false, message: "Email service is not configured on the server." };
   }
   
   const emailData = {
@@ -53,12 +54,12 @@ export async function sendTicketEmail(toEmail: string, userName: string, eventNa
     } else {
       const errorData = await response.json();
       console.error('Failed to send email:', errorData);
-       // Throw an error to ensure the calling function is aware of the failure.
-      throw new Error(errorData.message || 'Failed to send the confirmation email via Brevo API.');
+       // Return a failed status for the caller to handle gracefully.
+      return { success: false, message: errorData.message || 'Failed to send the confirmation email via Brevo API.' };
     }
   } catch (error: any) {
     console.error('Error during email dispatch:', error);
-    // Rethrow to be handled by the calling server action.
-    throw new Error(error.message || 'An unexpected error occurred while sending the email.');
+    // Return a failed status
+    return { success: false, message: error.message || 'An unexpected error occurred while sending the email.' };
   }
 }

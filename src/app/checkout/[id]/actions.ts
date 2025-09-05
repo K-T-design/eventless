@@ -26,12 +26,17 @@ async function createAndSendTicket(
 ) {
   try {
     const ticketId = ticketData.qrCodeData.split(':')[1]; // Extract ticket ID from QR data
-    await sendTicketEmail(
+    const emailResult = await sendTicketEmail(
         user.basicInfo.email,
         user.basicInfo.name,
         event.title,
         ticketId
     );
+
+    if (!emailResult.success) {
+      console.warn(`Email sending failed for user ${user.id}: ${emailResult.message}`);
+    }
+
   } catch (emailError) {
       console.error(`Failed to send ticket email for user ${user.id} and ticket ${ticketData.qrCodeData}. Reason:`, emailError);
       // We don't throw an error here to the end-user because the purchase itself was successful.
@@ -85,15 +90,13 @@ export async function verifyPaymentAndCreateTicket(
     }
 
     const eventRef = firestore.collection('events').doc(eventId);
-    const organizerRef = firestore.collection('users').doc(event.organizerId);
-    
     const userRef = firestore.collection('users').doc(userId);
     
     let firstTicketData: Omit<Ticket, 'id'> | null = null;
     let createdTicketIds: string[] = [];
     
     // Use a transaction to ensure all database writes succeed or fail together.
-    const { eventData, userData } = await firestore.runTransaction(async (transaction) => {
+    const { eventData, userData, organizerRef } = await firestore.runTransaction(async (transaction) => {
         const eventSnap = await transaction.get(eventRef);
         if (!eventSnap.exists) {
             throw new Error("Event not found.");
@@ -105,6 +108,8 @@ export async function verifyPaymentAndCreateTicket(
             throw new Error("User not found.");
         }
         const userData = userSnap.data() as UserProfile;
+
+        const orgRef = firestore.collection('users').doc(eventData.organizerId);
         
         const ticketRevenue = tier.price * quantity;
         
@@ -148,13 +153,13 @@ export async function verifyPaymentAndCreateTicket(
         transaction.set(transactionRef, newTransaction);
         
         if (ticketRevenue > 0) {
-            transaction.update(organizerRef, {
+            transaction.update(orgRef, {
                 'payouts.balance': FieldValue.increment(ticketRevenue),
                 'payouts.status': 'pending'
             });
         }
 
-        return { eventData, userData };
+        return { eventData, userData, organizerRef: orgRef };
     });
 
     // Send email *after* the database transaction has been successfully committed.
