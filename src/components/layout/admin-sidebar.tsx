@@ -12,6 +12,7 @@ import {
   Wallet,
   Inbox,
   AlertCircle,
+  Shield,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { collection, query, where, getCountFromServer } from "firebase/firestore";
@@ -66,6 +67,7 @@ export function AdminSidebarNav({ className, userProfile }: { className?: string
         { href: "/admin/approval-queue", label: "Approval Queue", icon: AlertCircle, count: pendingApprovalCount, roles: ['super_admin', 'admin'] },
         { href: "/admin/event-management", label: "Event Management", icon: Calendar, roles: ['super_admin', 'admin'] },
         { href: "/admin/user-management", label: "User Management", icon: Users, roles: ['super_admin'] },
+        { href: "/admin/manage-admins", label: "Manage Admins", icon: Shield, roles: ['super_admin'] },
         { href: "/admin/financials", label: "Financials", icon: Wallet, roles: ['super_admin'] },
         { href: "/admin/support-inbox", label: "Support Inbox", icon: Inbox, roles: ['super_admin'] },
     ];

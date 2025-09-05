@@ -14,7 +14,8 @@ import { AdminSidebar } from '@/components/layout/admin-sidebar';
 const SUPER_ADMIN_ONLY_PAGES = [
   '/admin/user-management',
   '/admin/financials',
-  '/admin/support-inbox'
+  '/admin/support-inbox',
+  '/admin/manage-admins'
 ];
 
 export default function AdminLayout({
