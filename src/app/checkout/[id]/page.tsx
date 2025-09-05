@@ -187,6 +187,8 @@ function CheckoutContent({ params }: { params: { id: string } }) {
     amount: totalPrice * 100, // Paystack expects amount in kobo
     publicKey: paystackPublicKey,
   };
+  
+  const isSuperAdmin = userProfile?.basicInfo.userType === 'super_admin';
 
   if (loading || authLoading || profileLoading) {
     return (
@@ -256,6 +258,15 @@ function CheckoutContent({ params }: { params: { id: string } }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          {isSuperAdmin && (
+            <Alert variant="destructive">
+              <Shield className="h-4 w-4" />
+              <AlertTitle>Super Admin Mode</AlertTitle>
+              <AlertDescription>
+                Payment is bypassed for your account.
+              </AlertDescription>
+            </Alert>
+          )}
           <div className="p-4 rounded-lg bg-muted/50 border flex items-start gap-4">
             <div className="relative w-24 h-24 rounded-md overflow-hidden shrink-0">
               <Image
@@ -317,7 +328,12 @@ function CheckoutContent({ params }: { params: { id: string } }) {
           </div>
         </CardContent>
         <CardFooter>
-          {totalPrice > 0 ? (
+          {isSuperAdmin ? (
+             <Button size="lg" className="w-full" onClick={() => handlePurchase(`free-admin-${new Date().getTime()}`)} disabled={processing || authLoading || !user}>
+                 {processing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <TicketIcon className="mr-2" />}
+                 Get Free Ticket (Admin)
+             </Button>
+          ) : totalPrice > 0 ? (
             <PaystackButton
               className="w-full"
               {...paystackConfig}
@@ -374,3 +390,5 @@ export default function CheckoutPage({ params }: { params: { id:string } }) {
     </Suspense>
   )
 }
+
+    
