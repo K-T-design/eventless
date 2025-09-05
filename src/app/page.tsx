@@ -5,8 +5,13 @@ import { Button } from "@/components/ui/button";
 import { PlusCircle, QrCode, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import FluidGlass from "@/components/fluid-glass";
 import { Suspense } from "react";
+import dynamic from 'next/dynamic';
+
+const FluidGlass = dynamic(() => import('@/components/fluid-glass'), {
+  ssr: false,
+  loading: () => <div className="h-[600px] w-full bg-muted rounded-lg flex items-center justify-center"><p>Loading 3D Component...</p></div>
+});
 
 
 export default function Home() {
@@ -116,8 +121,8 @@ export default function Home() {
                 <h2 className="text-4xl md:text-5xl font-bold font-headline mb-4">A Touch of Magic</h2>
                 <p className="text-lg md:text-xl max-w-3xl mx-auto text-muted-foreground">Interact with our fluid glass component below.</p>
             </div>
-            <Suspense fallback={<div className="h-[600px] w-full bg-muted rounded-lg flex items-center justify-center"><p>Loading 3D Component...</p></div>}>
-                 <div className="h-[600px] relative rounded-lg overflow-hidden shadow-2xl">
+             <div className="h-[600px] relative rounded-lg overflow-hidden shadow-2xl">
+                <Suspense fallback={null}>
                     <FluidGlass 
                         mode="lens"
                         lensProps={{
@@ -128,8 +133,8 @@ export default function Home() {
                           anisotropy: 0.01  
                         }}
                     />
-                </div>
-            </Suspense>
+                </Suspense>
+            </div>
         </div>
       </section>
 
