@@ -49,6 +49,7 @@ export async function verifyPaymentAndCreateTicket(
 
   try {
     let transactionAmount = 0;
+    let paymentStatus = 'success';
     
     // Free tickets bypass payment verification
     if (!isFreeTicket) {
@@ -68,6 +69,7 @@ export async function verifyPaymentAndCreateTicket(
         return { success: false, message: data.message || 'Payment verification failed.' };
       }
       transactionAmount = data.data.amount / 100; // Amount is in kobo
+      paymentStatus = data.data.status;
 
       const expectedAmount = (tier.price * quantity) + SERVICE_FEE;
       if (transactionAmount < expectedAmount) {
@@ -83,25 +85,27 @@ export async function verifyPaymentAndCreateTicket(
     }
 
     const eventRef = firestore.collection('events').doc(eventId);
-    const eventSnap = await eventRef.get();
-    if (!eventSnap.exists) {
-        throw new Error("Event not found.");
-    }
-    const eventData = eventSnap.data() as Event;
-    const organizerRef = firestore.collection('users').doc(eventData.organizerId);
+    const organizerRef = firestore.collection('users').doc(event.organizerId);
     
     const userRef = firestore.collection('users').doc(userId);
-    const userSnap = await userRef.get();
-    if (!userSnap.exists) {
-        throw new Error("User not found.");
-    }
-    const userData = userSnap.data() as UserProfile;
     
     let firstTicketData: Omit<Ticket, 'id'> | null = null;
     let createdTicketIds: string[] = [];
     
     // Use a transaction to ensure all database writes succeed or fail together.
-    await firestore.runTransaction(async (transaction) => {
+    const { eventData, userData } = await firestore.runTransaction(async (transaction) => {
+        const eventSnap = await transaction.get(eventRef);
+        if (!eventSnap.exists) {
+            throw new Error("Event not found.");
+        }
+        const eventData = eventSnap.data() as Event;
+
+        const userSnap = await transaction.get(userRef);
+        if (!userSnap.exists) {
+            throw new Error("User not found.");
+        }
+        const userData = userSnap.data() as UserProfile;
+        
         const ticketRevenue = tier.price * quantity;
         
         for (let i = 0; i < quantity; i++) {
@@ -149,6 +153,8 @@ export async function verifyPaymentAndCreateTicket(
                 'payouts.status': 'pending'
             });
         }
+
+        return { eventData, userData };
     });
 
     // Send email *after* the database transaction has been successfully committed.
