@@ -122,7 +122,7 @@ export default function Home() {
                 <p className="text-lg md:text-xl max-w-3xl mx-auto text-muted-foreground">Interact with our fluid glass component below.</p>
             </div>
              <div className="h-[600px] relative rounded-lg overflow-hidden shadow-2xl">
-                <Suspense fallback={null}>
+                <Suspense fallback={<div className="h-full w-full flex items-center justify-center bg-muted"><p>Loading 3D experience...</p></div>}>
                     <FluidGlass 
                         mode="lens"
                         lensProps={{
