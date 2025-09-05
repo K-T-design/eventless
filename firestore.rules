@@ -2,69 +2,115 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Helper function to check for admin roles
-    function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.basicInfo.userType == 'admin';
+
+    // =================================
+    // Helper Functions
+    // =================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function getUserRole(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.basicInfo.userType;
     }
 
     function isSuperAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.basicInfo.userType == 'super_admin';
+      return isSignedIn() && getUserRole(request.auth.uid) == 'super_admin';
     }
 
-    // USERS
-    // Only the user or a super_admin can read/write their own profile.
-    match /users/{userId} {
-      allow read, write: if request.auth.uid == userId || isSuperAdmin();
-    }
-
-    // EVENTS
-    // Anyone can read approved events.
-    // Admins/Super Admins can write any event.
-    // Authenticated users can create events.
-    match /events/{eventId} {
-      allow read: if resource.data.status == 'approved';
-      allow get: if request.auth != null; // Allow logged-in users to get any event by ID
-      allow list: if true; // Allow anyone to list events (queries will be filtered by status on client)
-      allow create: if request.auth != null;
-      allow update, delete: if isAdmin() || isSuperAdmin() || request.auth.uid == resource.data.organizerId;
-      
-      // TICKET TIERS (subcollection)
-      match /ticketTiers/{tierId} {
-        allow read: if true;
-        allow write: if isAdmin() || isSuperAdmin() || request.auth.uid == get(/databases/$(database)/documents/events/$(eventId)).data.organizerId;
-      }
+    function isAdmin() {
+      let role = getUserRole(request.auth.uid);
+      return isSignedIn() && (role == 'admin' || role == 'super_admin');
     }
     
-    // TICKETS
-    // Users can only read their own tickets.
-    // Tickets can only be created by authenticated users (via server action).
-    match /tickets/{ticketId} {
-      allow read: if request.auth.uid == resource.data.userId || isSuperAdmin();
-      allow create: if request.auth != null;
-      allow update: if isAdmin() || isSuperAdmin(); // for check-in
+    function isEventOrganizer(eventId) {
+       return isSignedIn() && request.auth.uid == get(/databases/$(database)/documents/events/$(eventId)).data.organizerId;
+    }
+
+    // =================================
+    // Collections
+    // =================================
+
+    // USERS: User profile data
+    match /users/{userId} {
+      // Anyone can create their own user document upon signing up
+      allow create: if isSignedIn() && request.auth.uid == userId;
+
+      // A user can only read their own data. A super_admin can read any user's data.
+      allow read: if isOwner(userId) || isSuperAdmin();
+      
+      // A user can update their own data. A super_admin can update any user's data.
+      allow update: if isOwner(userId) || isSuperAdmin();
+
+      // Only a super_admin can delete a user document.
       allow delete: if isSuperAdmin();
     }
-    
-    // TRANSACTIONS
-    // Users can only read their own transactions. Creation is server-side.
+
+    // EVENTS: Public event listings
+    match /events/{eventId} {
+      // Anyone can read an event that has been approved. Admins can read any event.
+      allow read: if resource.data.status == 'approved' || isAdmin();
+      
+      // Any authenticated user can create an event (subject to app logic).
+      allow create: if isSignedIn();
+      
+      // Only the event organizer or an admin can update an event.
+      allow update: if isEventOrganizer(eventId) || isAdmin();
+      
+      // Only the event organizer or an admin can delete an event.
+      allow delete: if isEventOrganizer(eventId) || isAdmin();
+
+      // TICKET TIERS subcollection
+      match /ticketTiers/{tierId} {
+        // If you can read the event, you can read its ticket tiers.
+        allow read: if get(/databases/$(database)/documents/events/$(eventId)).data.status == 'approved' || isAdmin();
+        
+        // Only the event organizer or an admin can write to tiers.
+        allow write: if isEventOrganizer(eventId) || isAdmin();
+      }
+    }
+
+    // TICKETS: User-specific tickets
+    match /tickets/{ticketId} {
+      // No one can create tickets directly. Must be done via server actions.
+      allow create: if false; 
+      
+      // Only the owner of the ticket or an admin can read it.
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      
+      // Only an admin (via a server process like check-in) can update a ticket.
+      allow update: if isAdmin();
+
+      // No one can delete tickets.
+      allow delete: if false;
+    }
+
+    // TRANSACTIONS: Private records of payments
     match /transactions/{transactionId} {
-        allow read: if request.auth.uid == resource.data.userId || isSuperAdmin();
-        allow create: if request.auth != null; // Server-side creation
-        allow update, delete: if isSuperAdmin();
+      // No direct client access. All operations must be through server actions.
+      allow read, write, delete: if false;
     }
-    
-    // PAYOUTS
-    // Only Super Admins can read or write payout records.
+
+    // PAYOUTS: Payout records for organizers
     match /payouts/{payoutId} {
-        allow read, write: if isSuperAdmin();
+       // Only super_admins can read or write payout records (via server actions).
+       allow read, write, delete: if isSuperAdmin();
     }
     
-    // SUPPORT TICKETS
-    // Users can create tickets. Only Super Admins can read/update them.
+    // SUPPORT TICKETS: User support requests
     match /supportTickets/{ticketId} {
-        allow create: if request.auth != null;
-        allow read, update, delete: if isSuperAdmin();
+      // Users can create their own support tickets.
+      allow create: if isOwner(request.resource.data.userId);
+
+      // Only the user who created it or a super_admin can read/update it.
+      allow read, update: if isOwner(resource.data.userId) || isSuperAdmin();
+
+      // Only a super_admin can delete a support ticket.
+      allow delete: if isSuperAdmin();
     }
   }
 }
