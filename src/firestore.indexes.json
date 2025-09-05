@@ -111,20 +111,6 @@
       "fields": [
         {
           "fieldPath": "basicInfo.userType",
-          "arrayConfig": "CONTAINS"
-        },
-        {
-          "fieldPath": "metadata.dateCreated",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "users",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "basicInfo.userType",
           "order": "DESCENDING"
         },
         {
@@ -136,3 +122,4 @@
   ],
   "fieldOverrides": []
 }
+
