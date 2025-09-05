@@ -118,6 +118,20 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "basicInfo.userType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "metadata.dateCreated",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []
