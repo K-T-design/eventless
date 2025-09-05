@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { UserProfile } from "@/types";
+import type { UserProfile, UserType } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -18,15 +18,17 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { getUsers, updateUserStatus } from "./actions";
+import { getUsers, updateUserStatus, updateUserRole } from "./actions";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const PAGE_SIZE = 15;
 
@@ -34,6 +36,9 @@ export default function UserManagementPage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [userToEditRole, setUserToEditRole] = useState<UserProfile | null>(null);
+  const [newRole, setNewRole] = useState<UserType | null>(null);
+  const [isUpdatingRole, setIsUpdatingRole] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
 
@@ -66,9 +71,7 @@ export default function UserManagementPage() {
         title: "Success",
         description: result.message,
       });
-      // Refresh the list after update by changing local state
-      setUsers(users.map(u => u.id === userId ? { ...u, basicInfo: { ...u.basicInfo, status: currentStatus === 'active' ? 'suspended' : 'active' } } : u));
-      fetchUsers(currentPage); // Refetch current page
+      fetchUsers(currentPage);
     } else {
        toast({
         variant: "destructive",
@@ -77,6 +80,28 @@ export default function UserManagementPage() {
       });
     }
   };
+  
+  const handleRoleChange = async () => {
+    if (!userToEditRole || !newRole) return;
+    setIsUpdatingRole(true);
+    const result = await updateUserRole(userToEditRole.id, newRole);
+    if(result.success) {
+      toast({
+        title: "Success",
+        description: result.message,
+      });
+      setUserToEditRole(null);
+      setNewRole(null);
+      fetchUsers(currentPage);
+    } else {
+       toast({
+        variant: "destructive",
+        title: "Error",
+        description: result.message,
+      });
+    }
+    setIsUpdatingRole(false);
+  }
 
   const totalPages = Math.ceil(totalUsers / PAGE_SIZE);
 
@@ -134,6 +159,7 @@ export default function UserManagementPage() {
                     </TableCell>
                     <TableCell className="text-right space-x-2">
                         <Button size="sm" variant="outline" onClick={() => setSelectedUser(user)}>View</Button>
+                         <Button size="sm" variant="outline" onClick={() => { setUserToEditRole(user); setNewRole(user.basicInfo.userType); }}>Change Role</Button>
                         <Button 
                           size="sm" 
                           variant={user.basicInfo.status === 'active' ? 'destructive' : 'secondary'}
@@ -269,8 +295,36 @@ export default function UserManagementPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      {userToEditRole && (
+        <Dialog open={!!userToEditRole} onOpenChange={(isOpen) => !isOpen && setUserToEditRole(null)}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Change Role for {userToEditRole.basicInfo.name}</DialogTitle>
+                    <DialogDescription>Select a new role for this user. This action can have significant security implications.</DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                     <Select onValueChange={(value: UserType) => setNewRole(value)} defaultValue={userToEditRole.basicInfo.userType}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select a role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="individual">Individual</SelectItem>
+                            <SelectItem value="organizer">Organizer</SelectItem>
+                            <SelectItem value="super_admin">Super Admin</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={() => setUserToEditRole(null)}>Cancel</Button>
+                    <Button onClick={handleRoleChange} disabled={isUpdatingRole}>
+                        {isUpdatingRole && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                        Save Changes
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }
-
-    

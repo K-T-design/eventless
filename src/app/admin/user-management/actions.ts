@@ -3,7 +3,7 @@
 
 import { collection, getDocs, query, orderBy, limit, startAfter, getCountFromServer, doc, updateDoc } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
-import type { UserProfile } from "@/types";
+import type { UserProfile, UserType } from "@/types";
 
 export async function getUsers(page: number = 1, pageSize: number = 10): Promise<{ users: UserProfile[], totalCount: number }> {
   try {
@@ -59,4 +59,15 @@ export async function updateUserStatus(userId: string, currentStatus: 'active' |
        console.error(`Error updating user ${userId}: `, error);
        return { success: false, message: "Could not update the user's status." };
     }
+}
+
+export async function updateUserRole(userId: string, newRole: UserType) {
+  try {
+    const userRef = doc(firestore, "users", userId);
+    await updateDoc(userRef, { "basicInfo.userType": newRole });
+    return { success: true, message: "User role has been updated." };
+  } catch (error: any) {
+    console.error(`Error updating role for user ${userId}:`, error);
+    return { success: false, message: "Could not update the user's role."}
+  }
 }
